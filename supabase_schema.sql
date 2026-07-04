@@ -129,18 +129,29 @@ create index if not exists idx_order_items_order on public.order_items(order_id)
 
 -- --------- Trigger: auto-create user_profile on auth.users insert ---------
 create or replace function public.handle_new_user()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
 begin
   insert into public.user_profiles (supabase_id, full_name, role)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'full_name', new.email),
-    coalesce((new.raw_user_meta_data->>'role')::app_role, 'customer')
+    'customer'::public.app_role
   )
   on conflict (supabase_id) do nothing;
   return new;
+exception when others then
+  raise log 'handle_new_user error for %: %', new.id, sqlerrm;
+  return new;
 end;
-$$ language plpgsql security definer;
+$$;
+
+grant usage on schema public to supabase_auth_admin;
+grant insert, select, update on public.user_profiles to supabase_auth_admin;
+grant execute on function public.handle_new_user() to supabase_auth_admin;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
