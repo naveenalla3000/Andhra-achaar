@@ -1,0 +1,179 @@
+{
+  "app_name": "Venkat Ramana Pickles",
+  "personality": "3 Editorial Mobile LIGHT",
+  "personality_one_liner": "An artisanal, warm, and sensory experience that frames traditional Indian pickles like a gourmet culinary magazine.",
+  "color": {
+    "surface": "#FDFBF7",
+    "onSurface": "#2D2421",
+    "surfaceSecondary": "#FFFFFF",
+    "onSurfaceSecondary": "#2D2421",
+    "surfaceTertiary": "#F5EFE6",
+    "onSurfaceTertiary": "#4A3F3A",
+    "surfaceInverse": "#2D2421",
+    "onSurfaceInverse": "#FDFBF7",
+    "brand": "#A33B20",
+    "brandPrimary": "#A33B20",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#D48B30",
+    "onBrandSecondary": "#2D2421",
+    "brandTertiary": "#F7E6E1",
+    "onBrandTertiary": "#8A3019",
+    "success": "#3D6E4B",
+    "onSuccess": "#FFFFFF",
+    "warning": "#D48B30",
+    "onWarning": "#2D2421",
+    "error": "#B23A3A",
+    "onError": "#FFFFFF",
+    "info": "#4A3F3A",
+    "onInfo": "#FFFFFF",
+    "border": "#E8E1D7",
+    "borderStrong": "#C2B4A3",
+    "divider": "#E8E1D7"
+  },
+  "typography": {
+    "displayFontFamily": "Libre Baskerville",
+    "textFontFamily": "Plus Jakarta Sans",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Generous magazine-like vertical rhythms. Keep padding comfortable so product photography has breathing room. Avoid dense clusters unless in dashboard views.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": 0,
+  "navigation": "bottom_tabs",
+  "icon_set": "Feather",
+  "glassmorphism": {
+    "enabled": false,
+    "do's": ["Use solid surface backgrounds or soft transparent gradients. Editorial personality relies on whitespace and solid structural colors."],
+    "dont's": ["Do not use blur or glassmorphism. It clashes with the tactile, matte feel of the artisanal editorial direction."]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Customer - Home",
+      "purpose": "Curated artisanal discovery of pickles.",
+      "states": {
+        "loading": "Centered spinner using brandPrimary.",
+        "empty": "Illustration of a traditional clay jar, 'Curating fresh batches soon.'",
+        "error": "Readable text with 'Tap to refresh' primary CTA."
+      },
+      "layout": "Editorial full-width hero card showcasing top featured pickle with vertical gradient scrim (transparent to 80% surfaceInverse) and Libre Baskerville large title. Followed by generous sections ('Top Sellers', 'New Arrivals') as horizontal scrollable carousels. Cards use surfaceSecondary with sm radius and 0 shadow, relying on imagery and whitespace for structure."
+    },
+    {
+      "name": "Customer - Store Discovery",
+      "purpose": "List available takeaway locations with timings.",
+      "states": {
+        "loading": "Skeleton list rows.",
+        "empty": "Map pin icon. 'No stores open nearby currently.'",
+        "error": "Error loading stores. 'Retry' button."
+      },
+      "layout": "List of store cards (address, timings, map snapshot). Each card uses border (1pt) instead of shadow. Action: 'Select Store'. High-contrast typography for timings."
+    },
+    {
+      "name": "Customer - Product Detail",
+      "purpose": "Sensory deep-dive into the pickle and packaging selection.",
+      "states": {
+        "loading": "Hero image skeleton.",
+        "empty": "N/A",
+        "error": "Failed to load product. 'Retry'."
+      },
+      "layout": "Large hero image stretching to top safe area. Content below: Product Name (Serif), Description, Ingredients. Weight selection via pill-shaped chips using surfaceTertiary bg and brandPrimary text for selected state. Sticky primary CTA 'Add to Cart' pinned above home indicator."
+    },
+    {
+      "name": "Customer - Multi-Store Cart & Checkout",
+      "purpose": "Review items auto-split by store and confirm takeaway.",
+      "states": {
+        "loading": "Spinner.",
+        "empty": "Empty cart icon. 'Your basket is empty.'",
+        "error": "Failed to load cart. 'Retry'."
+      },
+      "layout": "Items grouped by Store Name header (Plus Jakarta Sans, bold). Per-store subtotal. Sticky checkout button at the bottom: 'Confirm Takeaway (Pay at Store)'."
+    },
+    {
+      "name": "Seller/Sub-Seller - Dashboard & Orders",
+      "purpose": "Quick operational view of active orders and daily metrics.",
+      "states": {
+        "loading": "Skeleton metrics.",
+        "empty": "No active orders today.",
+        "error": "Error loading metrics. 'Retry'."
+      },
+      "layout": "Progressive disclosure layout: Top area shows 2-3 key metrics (Today's Orders, Revenue) in high-contrast card blocks. Below is a scrollable list of active orders with status tags (placed, accepted, ready-date-set). List rows are compact and thumb-friendly."
+    },
+    {
+      "name": "Primary Seller - Manage Sub-Sellers & Products",
+      "purpose": "Administer team and catalog under the specific store.",
+      "states": {
+        "loading": "Spinner.",
+        "empty": "No sub-sellers added yet. 'Add Sub-seller' button.",
+        "error": "Error loading list."
+      },
+      "layout": "Card-based tables for team list. Floating Action Button (brandPrimary) to 'Add New Pickle' or 'Add Sub-seller'. Product list with quick-edit capabilities."
+    },
+    {
+      "name": "Admin - Overview & Curation",
+      "purpose": "Manage platform-wide stores, primary sellers, and homepage sections.",
+      "states": {
+        "loading": "Spinner.",
+        "empty": "No data available.",
+        "error": "Error loading admin data."
+      },
+      "layout": "Grid layout for platform metrics. Section dedicated to 'Homepage Curation' where Admin can drag-and-drop or select pickles to feature in 'Top Sellers' or 'New Arrivals'. List of Stores with 'Add Store' CTA."
+    }
+  ],
+  "images": {
+    "hero_featured_pickle": {
+      "url": "https://images.unsplash.com/photo-1617854307432-13950e24ba07?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNDR8MHwxfHNlYXJjaHwxfHxtYW5nbyUyMHBpY2tsZSUyMEluZGlhbiUyMGZvb2R8ZW58MHx8fHwxNzgzMTY0MTA2fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Clear glass jar with Indian artisanal mango pickle on wooden table"
+    },
+    "hero_spices_background": {
+      "url": "https://images.unsplash.com/photo-1716816211590-c15a328a5ff0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzJ8MHwxfHNlYXJjaHwxfHx0cmFkaXRpb25hbCUyMEluZGlhbiUyMHNwaWNlcyUyMHJ1c3RpY3xlbnwwfHx8fDE3ODMxNjQxMDZ8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Table topped with assorted traditional Indian spices"
+    },
+    "category_pickles_jar": {
+      "url": "https://images.unsplash.com/photo-1613271596363-4fb96ef16eac?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwyfHxJbmRpYW4lMjBwaWNrbGVzJTIwamFyJTIwYXJ0aXNhbmFsfGVufDB8fHx8MTc4MzE2NDEwNnww&ixlib=rb-4.1.0&q=85",
+      "alt": "Artisanal red glass jar"
+    },
+    "empty_state_illustration": {
+      "url": "https://images.unsplash.com/photo-1581600140682-d4e68c8cde32?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzJ8MHwxfHNlYXJjaHwyfHx0cmFkaXRpb25hbCUyMEluZGlhbiUyMHNwaWNlcyUyMHJ1c3RpY3xlbnwwfHx8fDE3ODMxNjQxMDZ8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Rustic wooden chopping board with traditional spices"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Design the app with a refined 'Editorial Mobile LIGHT' personality (No Dark Mode needed for an artisanal e-commerce).",
+    "Enforce strict typographic hierarchy: use Libre Baskerville strictly for display/hero headings, and Plus Jakarta Sans for UI elements, labels, and descriptions.",
+    "Implement the Multi-role logic natively. Each role (Admin, Primary Seller, Sub-seller, Customer) gets a distinct Tab navigation layout.",
+    "Zero Glassmorphism: This brand requires a tactile, matte feel. Rely on solid surface colors, generous spacing, and fine 1pt borders for elevation (shadow_tier: 0).",
+    "Enforce a 3-stop vertical gradient scrim (transparent to 80% surfaceInverse) on all text-over-image scenarios, such as the Customer Home hero card.",
+    "Order Management: Sub-sellers and Sellers view the 5 order statuses using high-contrast, thumb-friendly list rows (card-based table layout) for fast operational scanning.",
+    "Absolutely NO purples, blues, or indigos anywhere. The palette is strictly terracotta, ochre, bone-white, and warm greys."
+  ]
+}
