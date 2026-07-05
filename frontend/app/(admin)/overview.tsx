@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
-import { apiFetch } from '@/src/lib/supabase';
+import { supabase } from '@/src/lib/supabase';
 import { useAuth } from '@/src/lib/auth-context';
 import { colors, spacing, radius, fonts } from '@/src/lib/theme';
 
@@ -13,7 +13,8 @@ export default function AdminOverview() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const d = await apiFetch('/analytics/admin'); setData(d); } catch {}
+    const { data: d, error } = await supabase.rpc('admin_analytics');
+    if (!error) setData(d);
     setLoading(false);
   }, []);
 

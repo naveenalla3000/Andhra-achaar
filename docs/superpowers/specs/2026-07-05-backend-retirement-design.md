@@ -225,7 +225,13 @@ grant execute on function public.admin_analytics() to authenticated;
 - `app/(admin)/overview.tsx`: replace `apiFetch('/analytics/admin')` with
   `await supabase.rpc('admin_analytics')`.
 - `src/lib/supabase.ts`: remove `apiFetch()` and `BACKEND_URL`.
-- `.env` / `.env.example` (frontend): remove `EXPO_PUBLIC_BACKEND_URL`.
+
+**Amendment:** `EXPO_PUBLIC_BACKEND_URL` is kept, not removed — `app/(auth)/forgot-password.tsx`
+uses it for an unrelated purpose (the Supabase password-reset redirect,
+`${backendUrl}/reset-password`, a separately-hosted static page, not part of
+`backend/server.py`). Discovered mid-implementation and confirmed with the
+project owner; the plan document was corrected accordingly (see its Task 9
+Step 2 note).
 
 The two analytics RPCs return `jsonb_build_object` shapes whose keys mirror
 the old FastAPI response dicts exactly, so the dashboard/overview screens
@@ -240,8 +246,8 @@ non-issue in practice.
 - Delete `Andhra-achaar/backend/` (`server.py`, `requirements.txt`, `tests/test_profile_heal.py`).
 - Update root `CLAUDE.md`:
   - Remove the "Backend (FastAPI / Python)" commands section.
-  - Remove the backend `.env` block under Environment Variables, and
-    `EXPO_PUBLIC_BACKEND_URL` from the frontend block.
+  - Remove the backend `.env` block under Environment Variables.
+    `EXPO_PUBLIC_BACKEND_URL` stays in the frontend block (see amendment above).
   - Replace the "Backend API Layer" architecture note with a description
     of the RPC functions (`heal_profile`, `checkout`, `store_analytics`,
     `admin_analytics`) and where they live (`supabase_migration_backend_retirement.sql`).

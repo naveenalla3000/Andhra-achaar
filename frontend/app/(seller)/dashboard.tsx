@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
-import { apiFetch } from '@/src/lib/supabase';
+import { supabase } from '@/src/lib/supabase';
 import { useAuth } from '@/src/lib/auth-context';
 import { colors, spacing, radius, fonts } from '@/src/lib/theme';
 
@@ -15,7 +15,8 @@ export default function SellerDashboard() {
     if (!profile?.store_id) { setLoading(false); return; }
     setLoading(true);
     try {
-      const d = await apiFetch(`/analytics/store/${profile.store_id}`);
+      const { data: d, error } = await supabase.rpc('store_analytics', { p_store_id: profile.store_id });
+      if (error) throw error;
       setData(d);
     } catch {}
     setLoading(false);
