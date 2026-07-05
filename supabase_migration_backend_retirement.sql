@@ -162,3 +162,34 @@ begin
 end;
 $$;
 grant execute on function public.admin_analytics() to authenticated;
+
+-- Closes a second self-escalation path found in final review: the
+-- pre-existing "own profile update" policy lets a user UPDATE their own
+-- row but never restricts which columns change, so a customer could set
+-- their own role to 'admin' (or store_id to any store) directly via the
+-- anon key. RLS has no clean "compare NEW to OLD column" primitive, so
+-- this is enforced with a BEFORE UPDATE trigger instead: non-admins may
+-- freely update their own row, but not role or store_id. Admins (who
+-- reach this table via the same "authenticated" Postgres role, just with
+-- role='admin' in the row) are unaffected since the trigger only blocks
+-- the change when current_role() != 'admin'.
+create or replace function public.prevent_self_role_escalation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if public.current_role() <> 'admin' then
+    if new.role is distinct from old.role or new.store_id is distinct from old.store_id then
+      raise exception 'Only admins can change role or store_id';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_prevent_self_role_escalation on public.user_profiles;
+create trigger trg_prevent_self_role_escalation
+  before update on public.user_profiles
+  for each row execute function public.prevent_self_role_escalation();
