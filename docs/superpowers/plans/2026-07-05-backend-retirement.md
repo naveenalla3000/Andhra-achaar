@@ -849,3 +849,76 @@ grep -rn "backend/server.py\|uvicorn\|apiFetch" --include=*.md --include=*.ts --
 Expected: no output. (`EXPO_PUBLIC_BACKEND_URL` is intentionally excluded from this check — it's still in use for the password-reset redirect, see Task 9 Step 2.)
 
 This task has no code changes to commit — it's the final verification gate before considering the migration complete.
+
+---
+
+### Task 11: Fix `own profile update` self-escalation gap (post-final-review finding)
+
+**Files:**
+- Modify: `Andhra-achaar/supabase_migration_backend_retirement.sql`
+
+**Interfaces:**
+- Produces: `public.prevent_self_role_escalation()` trigger function + `trg_prevent_self_role_escalation` trigger on `public.user_profiles`, appended to the same migration file Task 1 created.
+
+**Depends on:** Task 1 (same file).
+
+**Context:** The final whole-branch review found that the pre-existing `"own profile update"` RLS policy (`supabase_schema.sql:189-191`) has the same flaw the migration already fixes for INSERT: its `with check (supabase_id = auth.uid())` does not restrict which columns change, so any authenticated customer can currently run `supabase.from('user_profiles').update({ role: 'admin' }).eq('supabase_id', myOwnId)` directly and self-promote — RLS lets it through since it never inspects `role`/`store_id`. This task closes that gap with a `BEFORE UPDATE` trigger (the standard Postgres/Supabase pattern for "users can edit their own row, not privileged columns") rather than trying to encode "compare NEW to OLD" inside a bare RLS policy expression, which has no clean primitive for that comparison.
+
+- [ ] **Step 1: Append the trigger to the migration file**
+
+Append this to the end of `Andhra-achaar/supabase_migration_backend_retirement.sql` (after the existing `admin_analytics()` grant):
+
+```sql
+
+-- Closes a second self-escalation path found in final review: the
+-- pre-existing "own profile update" policy lets a user UPDATE their own
+-- row but never restricts which columns change, so a customer could set
+-- their own role to 'admin' (or store_id to any store) directly via the
+-- anon key. RLS has no clean "compare NEW to OLD column" primitive, so
+-- this is enforced with a BEFORE UPDATE trigger instead: non-admins may
+-- freely update their own row, but not role or store_id. Admins (who
+-- reach this table via the same "authenticated" Postgres role, just with
+-- role='admin' in the row) are unaffected since the trigger only blocks
+-- the change when current_role() != 'admin'.
+create or replace function public.prevent_self_role_escalation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if public.current_role() <> 'admin' then
+    if new.role is distinct from old.role or new.store_id is distinct from old.store_id then
+      raise exception 'Only admins can change role or store_id';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_prevent_self_role_escalation on public.user_profiles;
+create trigger trg_prevent_self_role_escalation
+  before update on public.user_profiles
+  for each row execute function public.prevent_self_role_escalation();
+```
+
+- [ ] **Step 2: Manual review (no live DB available)**
+
+Same constraint as Task 1: there is no local Supabase/Postgres to run this against. Verify by reading the trigger logic line by line:
+- A non-admin customer calling `supabase.from('user_profiles').update({ full_name: 'New Name' }).eq('supabase_id', myId)` — `NEW.role`/`NEW.store_id` unchanged from `OLD` → trigger allows it. Confirm this doesn't break the existing "own profile update" self-service editing use case.
+- A non-admin customer calling `.update({ role: 'admin' })` on their own row — `NEW.role IS DISTINCT FROM OLD.role` is true, `current_role()` (reading the row via `auth.uid()`, still `'customer'` at trigger time since triggers fire before the write completes) is not `'admin'` → exception raised, whole statement aborts. This is the fix.
+- An admin calling `promote()` (Task 3's direct update, or the `"admin manage profiles"` policy) — `current_role()` returns `'admin'` → trigger allows the role/store_id change through unimpeded. Confirm Task 3's `users.tsx` promote flow still works conceptually.
+- Confirm `current_role()` (schema.sql:177-179) is `security definer` and reads directly from `user_profiles` by `auth.uid()` — safe to call inside this trigger.
+
+- [ ] **Step 3: Commit**
+
+```bash
+cd /Users/allanaveen/Developer/aa/Andhra-achaar/.claude/worktrees/backend-retirement
+git add supabase_migration_backend_retirement.sql
+git commit -m "Add trigger to block self-service role/store_id escalation via UPDATE
+
+Final whole-branch review found the pre-existing own-profile-update RLS
+policy had the same unrestricted-column flaw the migration already
+fixed for INSERT. A BEFORE UPDATE trigger closes it without disturbing
+legitimate self-service profile edits or admin-driven promotion."
+```
