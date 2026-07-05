@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator, Alert }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { supabase, apiFetch } from '@/src/lib/supabase';
+import { supabase } from '@/src/lib/supabase';
 import { useAuth } from '@/src/lib/auth-context';
 import { colors, spacing, radius, fonts } from '@/src/lib/theme';
 
@@ -43,7 +43,8 @@ export default function Cart() {
   const checkout = async () => {
     setPlacing(true);
     try {
-      await apiFetch('/orders/checkout', { method: 'POST', body: JSON.stringify({}) });
+      const { error } = await supabase.rpc('checkout');
+      if (error) throw error;
       Alert.alert('Order placed', 'Please pay at the store when you pick up.');
       router.replace('/(customer)/account');
     } catch (e: any) {
