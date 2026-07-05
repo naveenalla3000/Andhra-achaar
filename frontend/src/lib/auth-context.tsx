@@ -48,8 +48,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
       if (!data) {
-        setProfile(null);
-        setProfileError('No profile found. The database schema may not be applied yet.');
+        // Self-heal: profile row was deleted but auth.users still exists.
+        // Recreate it (RLS allows this because supabase_id = auth.uid()).
+        const { data: userData } = await supabase.auth.getUser();
+        const email = userData?.user?.email ?? null;
+        const { data: healed, error: healErr } = await supabase
+          .from('user_profiles')
+          .insert({ supabase_id: uid, full_name: email, role: 'customer' })
+          .select('*')
+          .maybeSingle();
+        if (healErr || !healed) {
+          setProfile(null);
+          setProfileError(
+            healErr?.message ||
+            'No profile found. The database schema may not be applied yet.'
+          );
+          return;
+        }
+        setProfile(healed as Profile);
+        setProfileError(null);
         return;
       }
       setProfile(data as Profile);
