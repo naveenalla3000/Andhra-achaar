@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
-import { supabase, apiFetch } from '@/src/lib/supabase';
+import { supabase } from '@/src/lib/supabase';
 import { colors, spacing, radius, fonts } from '@/src/lib/theme';
 
 const ROLES = ['customer', 'sub_seller', 'primary_seller', 'admin'];
@@ -25,10 +25,12 @@ export default function AdminUsers() {
 
   const promote = async (role: string, storeId: string | null) => {
     if (!selectedUser) return;
-    try {
-      await apiFetch('/admin/promote', { method: 'POST', body: JSON.stringify({ supabase_id: selectedUser.supabase_id, role, store_id: storeId }) });
-      setSelectedUser(null); load();
-    } catch (e: any) { Alert.alert('Error', e.message); }
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ role, store_id: storeId })
+      .eq('supabase_id', selectedUser.supabase_id);
+    if (error) { Alert.alert('Error', error.message); return; }
+    setSelectedUser(null); load();
   };
 
   if (loading) return <View style={styles.center}><ActivityIndicator color={colors.brandPrimary} /></View>;
