@@ -17,28 +17,46 @@ interface AuthCtx {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  profileError: string | null;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx>({
-  session: null, profile: null, loading: true,
+  session: null, profile: null, loading: true, profileError: null,
   refreshProfile: async () => {}, signOut: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   const loadProfile = async (uid: string) => {
-    const { data } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('supabase_id', uid)
-      .maybeSingle();
-    setProfile(data as Profile | null);
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('supabase_id', uid)
+        .maybeSingle();
+      if (error) {
+        setProfile(null);
+        setProfileError(error.message);
+        return;
+      }
+      if (!data) {
+        setProfile(null);
+        setProfileError('No profile found. The database schema may not be applied yet.');
+        return;
+      }
+      setProfile(data as Profile);
+      setProfileError(null);
+    } catch (e: any) {
+      setProfile(null);
+      setProfileError(e?.message || 'Failed to load profile');
+    }
   };
 
   const refreshProfile = async () => {
@@ -70,7 +88,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     router.replace('/(auth)/login');
   };
 
-  return <Ctx.Provider value={{ session, profile, loading, refreshProfile, signOut }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ session, profile, loading, profileError, refreshProfile, signOut }}>{children}</Ctx.Provider>;
 };
 
 export const useAuth = () => useContext(Ctx);
