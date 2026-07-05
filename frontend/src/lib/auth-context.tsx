@@ -49,25 +49,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       if (!data) {
         // Self-heal: profile row was deleted but auth.users still exists.
-        // Recreate it (RLS allows this because supabase_id = auth.uid()).
-        const { data: userData } = await supabase.auth.getUser();
-        const email = userData?.user?.email ?? null;
-        const { data: healed, error: healErr } = await supabase
-          .from('user_profiles')
-          .insert({ supabase_id: uid, full_name: email, role: 'customer' })
-          .select('*')
-          .maybeSingle();
-        if (healErr || !healed) {
+        // Delegate to backend which uses service_role (bypasses RLS) so we
+        // don't require an extra RLS policy migration.
+        try {
+          const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL as string;
+          const { data: sessionRes } = await supabase.auth.getSession();
+          const token = sessionRes.session?.access_token;
+          const res = await fetch(`${backendUrl}/api/profile/heal`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          if (!res.ok) {
+            const errText = await res.text();
+            setProfile(null);
+            setProfileError(
+              `No profile found and self-heal failed: ${errText || res.status}`
+            );
+            return;
+          }
+          const healed = await res.json();
+          setProfile(healed as Profile);
+          setProfileError(null);
+          return;
+        } catch (healErr: any) {
           setProfile(null);
-          setProfileError(
-            healErr?.message ||
-            'No profile found. The database schema may not be applied yet.'
-          );
+          setProfileError(healErr?.message || 'Failed to create profile');
           return;
         }
-        setProfile(healed as Profile);
-        setProfileError(null);
-        return;
       }
       setProfile(data as Profile);
       setProfileError(null);

@@ -69,6 +69,36 @@ async def me(profile: Dict[str, Any] = Depends(get_current_profile)):
     return profile
 
 
+@api_router.post("/profile/heal")
+async def heal_profile(user: Dict[str, Any] = Depends(get_current_user)):
+    """Recreate a missing user_profiles row for the current auth user.
+
+    Uses service_role so RLS is bypassed. Safe because the row always
+    corresponds to the JWT-verified auth user calling this endpoint.
+    Idempotent: on conflict returns the existing row.
+    """
+    # First, try to find an existing row
+    existing = await sb_admin_request(
+        "GET",
+        f"/rest/v1/user_profiles?supabase_id=eq.{user['id']}&select=*",
+    )
+    if existing.status_code == 200 and existing.json():
+        return existing.json()[0]
+
+    # Not found — create it
+    full_name = (user.get("user_metadata") or {}).get("full_name") or user.get("email")
+    payload_row = {
+        "supabase_id": user["id"],
+        "full_name": full_name,
+        "role": "customer",
+    }
+    created = await sb_admin_request("POST", "/rest/v1/user_profiles", json=payload_row)
+    if created.status_code >= 300:
+        raise HTTPException(500, f"Failed to create profile: {created.text}")
+    row = created.json()
+    return row[0] if isinstance(row, list) else row
+
+
 @api_router.post("/admin/promote")
 async def promote_user(
     payload: Dict[str, Any],

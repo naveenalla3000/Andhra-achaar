@@ -1,0 +1,33 @@
+{
+  "summary": "ALL review items PASSED. Backend: 4/4 pytest tests green against POST /api/profile/heal on the public URL (https://vendor-pickle-hub.preview.emergentagent.com). Verified (a) 401 with no bearer token, (b) 401 with an invalid bearer token, (c) idempotency — calling heal for a freshly signed-up user (whose row was already created by the DB trigger) returns 200 with the same row on both consecutive calls, (d) destructive recovery — after deleting the user_profiles row via service_role, POST /api/profile/heal re-creates the row and returns 200 with role='customer'; verified by a subsequent direct DB read. This proves the service_role bypass of RLS works and the RLS-policy migration is no longer required. Frontend: fresh gmail signup (testheal<ts>@gmail.com / TestPass123!) redirects to /home with the Namaste heading and full customer tab bar (Home/Stores/Cart/Account). No 'row-level security' banner anywhere in the DOM, and no profile-error-message element present. The self-heal path exists but is not exercised on happy path (trigger inserts the row first), and the code path did not break the flow. Note on reviewer-supplied URL: reviewer listed https://6ca9f0f3-...preview.emergentagent.com but the actual EXPO_PACKAGER_PROXY_URL / EXPO_PUBLIC_BACKEND_URL in /app/frontend/.env is https://vendor-pickle-hub.preview.emergentagent.com — tests were run against the .env host (the app's own configured backend). Deprecation warning 'props.pointerEvents is deprecated' still emits at signup — unrelated to this iteration.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "React Native Web", "issue": "Runtime warning: 'props.pointerEvents is deprecated. Use style.pointerEvents' fires during signup screen mount. Not caused by this iteration; likely from a nested library (react-native-safe-area-context / expo-router). Low priority. Reference: observed via browser console."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_profile_heal.py",
+    "/app/test_reports/pytest/profile_heal.xml"
+  ],
+  "action_items": [
+    "NO-OP: The reviewer-supplied preview host (6ca9f0f3-...preview.emergentagent.com) does not match /app/frontend/.env's EXPO_PACKAGER_PROXY_URL (vendor-pickle-hub.preview.emergentagent.com). Tests were run against the .env host. If the reviewer intended a different preview URL, please update /app/frontend/.env EXPO_PACKAGER_PROXY_URL / EXPO_PUBLIC_BACKEND_URL / EXPO_PACKAGER_HOSTNAME accordingly.",
+    "OPTIONAL: In server.py:heal_profile, the on-create branch does not send Prefer:resolution=merge-duplicates. If two clients race and both hit the POST path after the GET returns empty, one will 500 on unique-constraint violation. Consider using ON CONFLICT / merge-duplicates for extra safety. Not a bug for the current review scope."
+  ],
+  "critical_code_review_comments": [
+    "server.py:get_current_user correctly gates on Supabase /auth/v1/user and returns 401 on any non-200; verified with both no-token and invalid-token cases.",
+    "server.py:heal_profile is idempotent: does GET-first via service_role, then POST only if empty. Uses full_name from user_metadata → falling back to email; role hardcoded to 'customer' matches the trigger default. LGTM.",
+    "auth-context.tsx:loadProfile uses maybeSingle() → on null delegates to /api/profile/heal with the current session access_token. Error surface via profileError banner is preserved. LGTM.",
+    "server.py imports look fine but the module hard-fails at import if SUPABASE_URL/anon/service keys are missing — good fail-fast behavior. Consider one line comment noting this in server.py for future maintainers."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (4/4)", "frontend": "100% (happy path verified)"},
+  "seed_data_creation": "Two throwaway Supabase auth users created and cleaned up: (1) TEST_heal_<uuid>@gmail.com via pytest fixture (auto-teardown deletes both user_profiles row and auth user via service_role); (2) testheal<ts>@gmail.com via UI signup for the frontend happy-path check (not cleaned up — small residual customer row, no harm).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend POST /api/profile/heal is fully wired end-to-end with service_role and passes the destructive delete-then-heal test. If future iterations touch the endpoint, re-run /app/backend/tests/test_profile_heal.py — it exercises 401, idempotency and the row-missing recovery path. The pytest fixture handles auth-user + profile-row cleanup on teardown.",
+  "rca_of_issue": "N/A — original RLS-violation bug is fully mitigated by routing the self-heal through the backend under service_role. Verified end-to-end: (1) DB row deleted; (2) POST /api/profile/heal called with a real Supabase JWT; (3) row re-appears in user_profiles with correct supabase_id + role='customer'; (4) subsequent call returns the same row (idempotent). No 'row violates row-level security' error at any point in the flow."
+}
