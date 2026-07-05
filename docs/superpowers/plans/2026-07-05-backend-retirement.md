@@ -725,7 +725,9 @@ pytest tests/test_profile_heal.py        # Single test file
 ```
 ```
 
-- [ ] **Step 2: Remove the backend env var block and `EXPO_PUBLIC_BACKEND_URL`**
+- [ ] **Step 2: Remove the backend `.env` block; keep `EXPO_PUBLIC_BACKEND_URL`**
+
+Note: `EXPO_PUBLIC_BACKEND_URL` is NOT only used for the retired FastAPI API — `frontend/app/(auth)/forgot-password.tsx` also uses it to build the Supabase password-reset redirect link (`${backendUrl}/reset-password`), which points at a static page hosted separately from `backend/server.py`. Confirmed with the project owner: keep this variable. Only remove the **Backend** `.env` block (the FastAPI service's own credentials, which no longer exist once `backend/` is deleted).
 
 Replace:
 
@@ -756,7 +758,9 @@ with:
 ```
 EXPO_PUBLIC_SUPABASE_URL=
 EXPO_PUBLIC_SUPABASE_ANON_KEY=
+EXPO_PUBLIC_BACKEND_URL=
 ```
+`EXPO_PUBLIC_BACKEND_URL` is unrelated to Supabase — it's the base URL for the standalone `/reset-password` page used in the forgot-password redirect (`app/(auth)/forgot-password.tsx`). It is not the retired FastAPI service.
 ```
 
 - [ ] **Step 3: Replace the "Backend API Layer" architecture note**
@@ -810,7 +814,7 @@ git commit -m "Update CLAUDE.md: backend retired, document RPC functions"
 
 **Files:** None (verification only).
 
-**Depends on:** Tasks 1–9 complete, migration applied to the live Supabase project, `EXPO_PUBLIC_BACKEND_URL` removed from any local `.env`.
+**Depends on:** Tasks 1–9 complete, migration applied to the live Supabase project. `EXPO_PUBLIC_BACKEND_URL` stays in `.env` (see Task 9 Step 2) — it points to the separately-hosted `/reset-password` page, not the retired FastAPI service.
 
 - [ ] **Step 1: Start the app**
 
@@ -840,8 +844,8 @@ Log in as a seller assigned to a store with existing orders — confirm the dash
 
 ```bash
 cd /Users/allanaveen/Developer/aa
-grep -rn "EXPO_PUBLIC_BACKEND_URL\|backend/server.py\|uvicorn" --include=*.md --include=*.ts --include=*.tsx . 2>/dev/null | grep -v node_modules
+grep -rn "backend/server.py\|uvicorn\|apiFetch" --include=*.md --include=*.ts --include=*.tsx . 2>/dev/null | grep -v node_modules
 ```
-Expected: no output.
+Expected: no output. (`EXPO_PUBLIC_BACKEND_URL` is intentionally excluded from this check — it's still in use for the password-reset redirect, see Task 9 Step 2.)
 
 This task has no code changes to commit — it's the final verification gate before considering the migration complete.
