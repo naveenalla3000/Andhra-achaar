@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session } from '@supabase/supabase-js';
+import { useRouter } from 'expo-router';
 import { supabase } from './supabase';
 
 export type AppRole = 'admin' | 'primary_seller' | 'sub_seller' | 'customer';
@@ -29,6 +30,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   const loadProfile = async (uid: string) => {
     const { data } = await supabase
