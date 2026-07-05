@@ -23,8 +23,8 @@ export default function AdminStores() {
     const { error } = await supabase.from('stores').insert({
       name: modal.name, address: modal.address,
       opens_at: modal.opens_at || '09:00', closes_at: modal.closes_at || '21:00',
-      latitude: modal.latitude ? Number(modal.latitude) : null,
-      longitude: modal.longitude ? Number(modal.longitude) : null,
+      latitude: modal.latitude?.trim() || null,
+      longitude: modal.longitude?.trim() || null,
     });
     if (error) { Alert.alert('Error', error.message); return; }
     setModal(null); load();
@@ -64,8 +64,8 @@ export default function AdminStores() {
             <TextInput style={[styles.input, { flex: 1 }]} placeholder="Closes (21:00)" placeholderTextColor={colors.muted} value={modal?.closes_at} onChangeText={v => setModal((m: any) => ({ ...m, closes_at: v }))} />
           </View>
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <TextInput style={[styles.input, { flex: 1 }]} placeholder="Latitude" placeholderTextColor={colors.muted} keyboardType="numeric" value={modal?.latitude} onChangeText={v => setModal((m: any) => ({ ...m, latitude: v }))} />
-            <TextInput style={[styles.input, { flex: 1 }]} placeholder="Longitude" placeholderTextColor={colors.muted} keyboardType="numeric" value={modal?.longitude} onChangeText={v => setModal((m: any) => ({ ...m, longitude: v }))} />
+            <TextInput testID="store-latitude" style={[styles.input, { flex: 1 }]} placeholder="Latitude (e.g. 17.385 N)" placeholderTextColor={colors.muted} value={modal?.latitude} onChangeText={v => setModal((m: any) => ({ ...m, latitude: v }))} autoCapitalize="characters" />
+            <TextInput testID="store-longitude" style={[styles.input, { flex: 1 }]} placeholder="Longitude (e.g. 78.486 E)" placeholderTextColor={colors.muted} value={modal?.longitude} onChangeText={v => setModal((m: any) => ({ ...m, longitude: v }))} autoCapitalize="characters" />
           </View>
           <View style={styles.actions}>
             <Pressable onPress={() => setModal(null)} style={[styles.mBtn, styles.mBtnGhost]}><Text style={styles.mBtnGhostText}>Cancel</Text></Pressable>

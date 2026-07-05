@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 
 export type AppRole = 'admin' | 'primary_seller' | 'sub_seller' | 'customer';
@@ -78,13 +79,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signOut = async () => {
+    // Fire-and-forget: don't let a slow network call block navigation
+    supabase.auth.signOut().catch(() => {});
+    // Purge any lingering Supabase session tokens from AsyncStorage
     try {
-      await supabase.auth.signOut();
+      const keys = await AsyncStorage.getAllKeys();
+      const supabaseKeys = keys.filter((k) => k.startsWith('sb-') || k.includes('supabase'));
+      if (supabaseKeys.length) await AsyncStorage.multiRemove(supabaseKeys);
     } catch {
-      // ignore network errors — always clear local state
+      // ignore
     }
     setSession(null);
     setProfile(null);
+    setProfileError(null);
     router.replace('/(auth)/login');
   };
 

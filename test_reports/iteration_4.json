@@ -1,0 +1,33 @@
+{
+  "summary": "ALL 5 items under review PASSED. (1) Customer /(customer)/account signout-button → routes to /(auth)/login (login-email-input visible). (2) Admin /(admin)/overview signout-button → routes to /login. (3) Seller /(seller)/account signout-button → routes to /login. (4) Admin 'Add Store' modal: store-latitude and store-longitude are pure text inputs (type=null, inputmode=null, pattern=null on the rendered DOM) and successfully accepted alphanumeric values '17.385 N' and '78.486 E' verbatim — no numeric keypad. (5) Post-signout, protected routes (e.g. /account) correctly redirect back to /login, confirming session AsyncStorage purge + layout-level session guard both work. NOTE: Newly signed-up users now correctly get a customer profile row (schema/trigger from /app/supabase_schema.sql has been applied since iteration_3). One pre-existing SECURITY GAP to flag (out of review scope): (admin) and (seller) tab layouts guard only on `session` — not on `profile.role` — so a signed-in customer can navigate to /overview or /dashboard by URL and briefly see those tab UIs (empty data). Two very minor findings: customer signout button is 66x33 px (<44 accessibility target); one React 'uncontrolled→controlled' warning fires when typing into store-latitude because modal.latitude starts as undefined.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "(customer)/account signout button", "issue": "Touch target is 66x33 px — below the 44px accessibility minimum. Consider paddingVertical ≥ spacing.md.", "testID": "signout-button", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "(admin)/stores → New Store modal", "issues": ["React warning: 'A component is changing an uncontrolled input to be controlled.' fires when user types into store-latitude/store-longitude because modal.latitude/longitude are undefined at open. Initialize modal state with latitude: '', longitude: '' when opening the modal, or use value={modal?.latitude ?? ''} in the TextInput."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_4.json"],
+  "action_items": [
+    "OPTIONAL polish (LOW): initialize latitude/longitude to empty strings in the New Store modal setState (or use ?? '' in value) to silence React controlled-input warning.",
+    "OPTIONAL polish (LOW): give the customer account signout button paddingVertical ≥ spacing.md so height reaches 44px minimum.",
+    "OUT-OF-SCOPE SECURITY: (admin)/_layout.tsx and (seller)/_layout.tsx currently only redirect when session is null — they do NOT check profile.role. A signed-in customer can navigate directly to /overview or /dashboard by URL. Recommend also `if (!loading && profile && profile.role !== 'admin') return <Redirect .../>;` for the admin layout, and analogous check for seller layout. Not a regression from this iteration, but worth addressing since role separation is now the app's primary access model.",
+    "User still needs to run /app/supabase_migration_latlng_text.sql before Save on the store form will succeed — verified only the input UI per instructions; Save was intentionally not clicked."
+  ],
+  "critical_code_review_comments": [
+    "auth-context.tsx.signOut is now robust: fire-and-forget supabase.auth.signOut(), AsyncStorage purge of 'sb-*'/'supabase' keys, local state clear, then router.replace('/(auth)/login') — verified end-to-end across all three role paths.",
+    "(admin/seller/customer)/_layout.tsx use the correct pattern of !loading && !session guard so the redirect doesn't race the initial loading state. Consider extending to role check (see action item).",
+    "(admin)/stores.tsx: latitude/longitude are now plain TextInputs with no keyboardType override — confirmed on web rendering that no inputmode/type='number' is emitted, so mobile keyboards will be full text keyboards. Trim on save (line 26-27) safely handles the '17.385 N' style value."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend-only review)", "frontend": "100% (5/5 items verified)"},
+  "seed_data_creation": "Three throwaway Supabase auth users created via app signup: testfullflow_1783233515@example.com, testadmin_1783233577@example.com, testseller_1783233594@example.com (all default 'customer' role, password TestPass123!).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Signout is fully working across all three role paths (admin/seller/customer) and from the profile-error fallback screen. Latitude/Longitude in the New Store modal are now text inputs and accept 'DD.DDD N/E'-style strings. The remaining pending user action is to run /app/supabase_migration_latlng_text.sql so Save on the store form persists the alphanumeric value. Layout-level role enforcement is a separate hardening item (see action_items).",
+  "rca_of_issue": "N/A — no bug reproduced; both bug reports were already fixed. Sign-out failure previously reported by user was likely due to two independent factors that have now been addressed: (a) supabase.auth.signOut() network hang could block navigation — now made fire-and-forget with local-state clear + router.replace running unconditionally; (b) admin/seller layouts had no session guard, so after signOut the user could remain visually on an admin/seller screen — now they Redirect to /(auth)/login as soon as session becomes null. Latitude/Longitude was numeric-only TextInput — now plain text with placeholder examples 'e.g. 17.385 N' / 'e.g. 78.486 E', and save() trims and forwards the string verbatim (DB migration still required by user)."
+}

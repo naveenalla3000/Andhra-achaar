@@ -1,8 +1,11 @@
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { colors, fonts } from '@/src/lib/theme';
+import { useAuth } from '@/src/lib/auth-context';
 
 export default function AdminTabs() {
+  const { session, loading } = useAuth();
+  if (!loading && !session) return <Redirect href="/(auth)/login" />;
   return (
     <Tabs screenOptions={{
       headerShown: false,
