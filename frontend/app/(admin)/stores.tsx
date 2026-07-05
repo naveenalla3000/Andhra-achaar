@@ -64,8 +64,8 @@ export default function AdminStores() {
             <TextInput style={[styles.input, { flex: 1 }]} placeholder="Closes (21:00)" placeholderTextColor={colors.muted} value={modal?.closes_at} onChangeText={v => setModal((m: any) => ({ ...m, closes_at: v }))} />
           </View>
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <TextInput testID="store-latitude" style={[styles.input, { flex: 1 }]} placeholder="Latitude (e.g. 17.385 N)" placeholderTextColor={colors.muted} value={modal?.latitude} onChangeText={v => setModal((m: any) => ({ ...m, latitude: v }))} autoCapitalize="characters" />
-            <TextInput testID="store-longitude" style={[styles.input, { flex: 1 }]} placeholder="Longitude (e.g. 78.486 E)" placeholderTextColor={colors.muted} value={modal?.longitude} onChangeText={v => setModal((m: any) => ({ ...m, longitude: v }))} autoCapitalize="characters" />
+            <TextInput testID="store-latitude" style={[styles.input, { flex: 1 }]} placeholder="Latitude (e.g. 17.385 N)" placeholderTextColor={colors.muted} value={modal?.latitude ?? ''} onChangeText={v => setModal((m: any) => ({ ...m, latitude: v }))} autoCapitalize="characters" />
+            <TextInput testID="store-longitude" style={[styles.input, { flex: 1 }]} placeholder="Longitude (e.g. 78.486 E)" placeholderTextColor={colors.muted} value={modal?.longitude ?? ''} onChangeText={v => setModal((m: any) => ({ ...m, longitude: v }))} autoCapitalize="characters" />
           </View>
           <View style={styles.actions}>
             <Pressable onPress={() => setModal(null)} style={[styles.mBtn, styles.mBtnGhost]}><Text style={styles.mBtnGhostText}>Cancel</Text></Pressable>

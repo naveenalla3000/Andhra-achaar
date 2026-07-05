@@ -4,8 +4,9 @@ import { colors, fonts } from '@/src/lib/theme';
 import { useAuth } from '@/src/lib/auth-context';
 
 export default function AdminTabs() {
-  const { session, loading } = useAuth();
+  const { session, profile, loading } = useAuth();
   if (!loading && !session) return <Redirect href="/(auth)/login" />;
+  if (!loading && profile && profile.role !== 'admin') return <Redirect href="/" />;
   return (
     <Tabs screenOptions={{
       headerShown: false,

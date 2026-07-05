@@ -4,8 +4,9 @@ import { colors, fonts } from '@/src/lib/theme';
 import { useAuth } from '@/src/lib/auth-context';
 
 export default function SellerTabs() {
-  const { session, loading } = useAuth();
+  const { session, profile, loading } = useAuth();
   if (!loading && !session) return <Redirect href="/(auth)/login" />;
+  if (!loading && profile && profile.role !== 'primary_seller' && profile.role !== 'sub_seller') return <Redirect href="/" />;
   return (
     <Tabs screenOptions={{
       headerShown: false,
