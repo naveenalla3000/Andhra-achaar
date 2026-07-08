@@ -17,7 +17,10 @@ export default function AdminTabs() {
     }}>
       <Tabs.Screen name="overview" options={{ title: 'Overview', tabBarIcon: ({ color, size }) => <Feather name="pie-chart" size={size} color={color} /> }} />
       <Tabs.Screen name="stores" options={{ title: 'Stores', tabBarIcon: ({ color, size }) => <Feather name="home" size={size} color={color} /> }} />
+      <Tabs.Screen name="categories" options={{ title: 'Categories', tabBarIcon: ({ color, size }) => <Feather name="tag" size={size} color={color} /> }} />
       <Tabs.Screen name="curation" options={{ title: 'Curation', tabBarIcon: ({ color, size }) => <Feather name="layout" size={size} color={color} /> }} />
+      <Tabs.Screen name="packaging" options={{ title: 'Packaging', tabBarIcon: ({ color, size }) => <Feather name="box" size={size} color={color} /> }} />
+      <Tabs.Screen name="banners" options={{ title: 'Banners', tabBarIcon: ({ color, size }) => <Feather name="image" size={size} color={color} /> }} />
       <Tabs.Screen name="users" options={{ title: 'Users', tabBarIcon: ({ color, size }) => <Feather name="users" size={size} color={color} /> }} />
     </Tabs>
   );

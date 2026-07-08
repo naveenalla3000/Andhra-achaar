@@ -22,7 +22,7 @@ export default function StoreDetail() {
       setStore(s);
       const { data: p } = await supabase
         .from('pickles')
-        .select('*,packaging_options(price_inr,is_active)')
+        .select('*,pickle_variants(selling_price_inr,is_active)')
         .eq('store_id', id).eq('is_active', true);
       setPickles(p || []); setLoading(false);
     })();
@@ -51,7 +51,8 @@ export default function StoreDetail() {
         }
         ListEmptyComponent={<Text style={styles.empty}>No pickles yet.</Text>}
         renderItem={({ item }) => {
-          const price = item.packaging_options?.[0]?.price_inr;
+          const prices = (item.pickle_variants || []).map((v: any) => v.selling_price_inr).filter(Boolean);
+          const price = prices.length ? Math.min(...prices) : undefined;
           return (
             <Pressable testID={`pickle-${item.id}`} onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.id } })} style={styles.card}>
               <Image source={item.image_url || FALLBACK} style={styles.img} contentFit="cover" />

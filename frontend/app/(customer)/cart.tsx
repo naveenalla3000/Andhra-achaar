@@ -19,25 +19,29 @@ export default function Cart() {
     setLoading(true);
     const { data } = await supabase
       .from('cart_items')
-      .select('id,quantity,pickle:pickles(id,name,image_url,store_id,store:stores(id,name)),packaging:packaging_options(id,label,price_inr)')
+      .select('id,quantity,pickle:pickles(id,name,image_url,store_id,store:stores(id,name)),variant_packaging:variant_packagings(id,selling_price_inr,mrp_inr,discount_pct,variant:pickle_variants(label),packaging_type:packaging_types(name))')
       .eq('customer_id', profile.id);
-    setItems(data || []); setLoading(false);
+    setItems(data || []);
+    setLoading(false);
   }, [profile]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const groups = items.reduce((acc: any, it: any) => {
-    const s = it.pickle.store; const key = s.id;
+    const s = it.pickle?.store;
+    if (!s) return acc;
+    const key = s.id;
     acc[key] = acc[key] || { store: s, items: [], subtotal: 0 };
     acc[key].items.push(it);
-    acc[key].subtotal += Number(it.packaging.price_inr) * it.quantity;
+    acc[key].subtotal += Number(it.variant_packaging?.selling_price_inr ?? 0) * it.quantity;
     return acc;
   }, {} as Record<string, any>);
   const groupArr: any[] = Object.values(groups);
   const total = groupArr.reduce((sum, g) => sum + g.subtotal, 0);
 
   const removeItem = async (id: string) => {
-    await supabase.from('cart_items').delete().eq('id', id); load();
+    await supabase.from('cart_items').delete().eq('id', id);
+    load();
   };
 
   const checkout = async () => {
@@ -74,18 +78,34 @@ export default function Cart() {
                   <Feather name="map-pin" size={14} color={colors.brandPrimary} />
                   <Text style={styles.storeName}>{g.store.name}</Text>
                 </View>
-                {g.items.map((it: any) => (
-                  <View key={it.id} style={styles.itemRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.itemName}>{it.pickle.name}</Text>
-                      <Text style={styles.itemMeta}>{it.packaging.label} · ×{it.quantity}</Text>
+                {g.items.map((it: any) => {
+                  const vp = it.variant_packaging;
+                  const lineTotal = Number(vp?.selling_price_inr ?? 0) * it.quantity;
+                  const sizeLabel = vp?.variant?.label;
+                  const pkgLabel = vp?.packaging_type?.name;
+                  return (
+                    <View key={it.id} style={styles.itemRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.itemName}>{it.pickle?.name}</Text>
+                        <View style={styles.itemMeta}>
+                          {(sizeLabel || pkgLabel) ? (
+                            <Text style={styles.itemLabel}>
+                              {[sizeLabel, pkgLabel].filter(Boolean).join(' · ')}
+                            </Text>
+                          ) : null}
+                          <Text style={styles.itemQty}>×{it.quantity}</Text>
+                          {vp?.discount_pct > 0 && (
+                            <Text style={styles.itemDiscount}>{vp.discount_pct}% off</Text>
+                          )}
+                        </View>
+                      </View>
+                      <Text style={styles.itemPrice}>₹{lineTotal.toFixed(0)}</Text>
+                      <Pressable testID={`cart-remove-${it.id}`} onPress={() => removeItem(it.id)} style={styles.removeBtn}>
+                        <Feather name="x" size={16} color={colors.muted} />
+                      </Pressable>
                     </View>
-                    <Text style={styles.itemPrice}>₹{(Number(it.packaging.price_inr) * it.quantity).toFixed(0)}</Text>
-                    <Pressable testID={`cart-remove-${it.id}`} onPress={() => removeItem(it.id)} style={styles.removeBtn}>
-                      <Feather name="x" size={16} color={colors.muted} />
-                    </Pressable>
-                  </View>
-                ))}
+                  );
+                })}
                 <View style={styles.subRow}>
                   <Text style={styles.subLabel}>Subtotal</Text>
                   <Text style={styles.subVal}>₹{g.subtotal.toFixed(0)}</Text>
@@ -118,7 +138,10 @@ const styles = StyleSheet.create({
   storeName: { fontFamily: fonts.textBold, color: colors.onSurface, fontSize: 14 },
   itemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border, gap: spacing.md },
   itemName: { fontFamily: fonts.textMedium, color: colors.onSurface, fontSize: 14 },
-  itemMeta: { fontFamily: fonts.text, color: colors.muted, fontSize: 12, marginTop: 2 },
+  itemMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 2 },
+  itemLabel: { fontFamily: fonts.text, color: colors.onSurface, fontSize: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, paddingHorizontal: spacing.xs },
+  itemQty: { fontFamily: fonts.text, color: colors.muted, fontSize: 12 },
+  itemDiscount: { fontFamily: fonts.textBold, color: colors.success, fontSize: 11 },
   itemPrice: { fontFamily: fonts.textBold, color: colors.onSurface, fontSize: 14 },
   removeBtn: { padding: spacing.sm },
   subRow: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border, marginTop: spacing.sm },

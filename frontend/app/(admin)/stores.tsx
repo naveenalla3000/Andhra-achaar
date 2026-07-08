@@ -1,33 +1,100 @@
-import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator, Modal, TextInput, Alert, ScrollView } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import {
+  View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator,
+  Modal, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { supabase } from '@/src/lib/supabase';
 import { colors, spacing, radius, fonts } from '@/src/lib/theme';
+import TimePickerWheel from '@/src/components/TimePickerWheel';
+import StoreMapPicker from '@/src/components/StoreMapPicker';
+
+type Draft = {
+  id?: string;
+  name: string;
+  address: string;
+  opens_at: string;
+  closes_at: string;
+  latitude: string;
+  longitude: string;
+};
+
+const blankDraft = (): Draft => ({ name: '', address: '', opens_at: '09:00', closes_at: '21:00', latitude: '', longitude: '' });
+
+const formatTimeDisplay = (hhmm: string): string => {
+  const [h, m] = hhmm.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return hhmm;
+  const ampm = h < 12 ? 'AM' : 'PM';
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, '0')} ${ampm}`;
+};
 
 export default function AdminStores() {
   const [stores, setStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState<any>(null);
+  const [modal, setModal] = useState<Draft | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [mapVisible, setMapVisible] = useState(false);
+
+  const [timePickerFor, setTimePickerFor] = useState<'opens_at' | 'closes_at' | null>(null);
+  const timePickerOriginal = useRef('');
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from('stores').select('*,primary_seller:user_profiles!stores_primary_seller_id_fkey(id,full_name)').order('name');
-    setStores(data || []); setLoading(false);
+    const { data } = await supabase
+      .from('stores')
+      .select('*,primary_seller:user_profiles!stores_primary_seller_id_fkey(id,full_name)')
+      .order('name');
+    setStores(data || []);
+    setLoading(false);
   }, []);
+
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
+  const openNew = () => setModal(blankDraft());
+
+  const openEdit = (item: any) => setModal({
+    id: item.id,
+    name: item.name || '',
+    address: item.address || '',
+    opens_at: item.opens_at || '09:00',
+    closes_at: item.closes_at || '21:00',
+    latitude: item.latitude != null ? String(item.latitude) : '',
+    longitude: item.longitude != null ? String(item.longitude) : '',
+  });
+
   const save = async () => {
-    if (!modal.name || !modal.address) { Alert.alert('Name and address required'); return; }
-    const { error } = await supabase.from('stores').insert({
-      name: modal.name, address: modal.address,
-      opens_at: modal.opens_at || '09:00', closes_at: modal.closes_at || '21:00',
-      latitude: modal.latitude?.trim() || null,
-      longitude: modal.longitude?.trim() || null,
-    });
+    if (!modal) return;
+    if (!modal.name.trim() || !modal.address.trim()) { Alert.alert('Name and address required'); return; }
+    setSaving(true);
+    const payload = {
+      name: modal.name.trim(),
+      address: modal.address.trim(),
+      opens_at: modal.opens_at.trim() || '09:00',
+      closes_at: modal.closes_at.trim() || '21:00',
+      latitude: modal.latitude.trim() || null,
+      longitude: modal.longitude.trim() || null,
+    };
+    const { error } = modal.id
+      ? await supabase.from('stores').update(payload).eq('id', modal.id)
+      : await supabase.from('stores').insert(payload);
+    setSaving(false);
     if (error) { Alert.alert('Error', error.message); return; }
-    setModal(null); load();
+    setModal(null);
+    load();
+  };
+
+  const openTimePicker = (field: 'opens_at' | 'closes_at') => {
+    timePickerOriginal.current = modal?.[field] || '';
+    setTimePickerFor(field);
+  };
+
+  const cancelTimePicker = () => {
+    if (timePickerFor && timePickerOriginal.current)
+      setModal(m => m ? { ...m, [timePickerFor]: timePickerOriginal.current } : null);
+    setTimePickerFor(null);
   };
 
   if (loading) return <View style={styles.center}><ActivityIndicator color={colors.brandPrimary} /></View>;
@@ -36,10 +103,11 @@ export default function AdminStores() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.headerRow}>
         <Text style={styles.header}>Stores</Text>
-        <Pressable testID="add-store-btn" onPress={() => setModal({ name: '', address: '', opens_at: '09:00', closes_at: '21:00' })} style={styles.addBtn}>
+        <Pressable testID="add-store-btn" onPress={openNew} style={styles.addBtn}>
           <Feather name="plus" size={18} color={colors.onBrandPrimary} />
         </Pressable>
       </View>
+
       <FlatList
         data={stores}
         keyExtractor={s => s.id}
@@ -47,35 +115,150 @@ export default function AdminStores() {
         ListEmptyComponent={<Text style={styles.empty}>No stores yet. Add your first.</Text>}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <Text style={styles.name}>{item.name}</Text>
+            <View style={styles.cardHeader}>
+              <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+              <Pressable onPress={() => openEdit(item)} hitSlop={8} style={styles.editBtn}>
+                <Feather name="edit-2" size={15} color={colors.muted} />
+              </Pressable>
+            </View>
             <Text style={styles.line}>{item.address}</Text>
             <Text style={styles.line}>{item.opens_at} – {item.closes_at}</Text>
+            {(item.latitude || item.longitude) && (
+              <View style={styles.coordRow}>
+                <Feather name="map-pin" size={11} color={colors.brandPrimary} />
+                <Text style={styles.coordText}>{item.latitude}, {item.longitude}</Text>
+              </View>
+            )}
             <Text style={styles.meta}>Primary seller: {item.primary_seller?.full_name || 'unassigned'}</Text>
           </View>
         )}
       />
+
+      {/* ── Store form modal ── */}
       <Modal visible={!!modal} transparent animationType="slide" onRequestClose={() => setModal(null)}>
-        <View style={styles.backdrop}><View style={styles.modal}><ScrollView>
-          <Text style={styles.modalTitle}>New Store</Text>
-          <TextInput testID="store-name" style={styles.input} placeholder="Store name" placeholderTextColor={colors.muted} value={modal?.name} onChangeText={v => setModal((m: any) => ({ ...m, name: v }))} />
-          <TextInput style={styles.input} placeholder="Address" placeholderTextColor={colors.muted} value={modal?.address} onChangeText={v => setModal((m: any) => ({ ...m, address: v }))} multiline />
-          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <TextInput style={[styles.input, { flex: 1 }]} placeholder="Opens (09:00)" placeholderTextColor={colors.muted} value={modal?.opens_at} onChangeText={v => setModal((m: any) => ({ ...m, opens_at: v }))} />
-            <TextInput style={[styles.input, { flex: 1 }]} placeholder="Closes (21:00)" placeholderTextColor={colors.muted} value={modal?.closes_at} onChangeText={v => setModal((m: any) => ({ ...m, closes_at: v }))} />
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={styles.backdrop}>
+            <View style={styles.sheet}>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <Text style={styles.modalTitle}>{modal?.id ? 'Edit Store' : 'New Store'}</Text>
+
+                <Text style={styles.label}>Store name</Text>
+                <TextInput
+                  testID="store-name"
+                  style={styles.input}
+                  placeholder="e.g. Venkat Ramana Pickles"
+                  placeholderTextColor={colors.muted}
+                  value={modal?.name}
+                  onChangeText={v => setModal(m => m ? { ...m, name: v } : null)}
+                />
+
+                <Text style={styles.label}>Address</Text>
+                <TextInput
+                  style={[styles.input, styles.multiline]}
+                  placeholder="Full address"
+                  placeholderTextColor={colors.muted}
+                  value={modal?.address}
+                  onChangeText={v => setModal(m => m ? { ...m, address: v } : null)}
+                  multiline
+                />
+
+                <Text style={styles.label}>Hours</Text>
+                <View style={styles.row}>
+                  {(['opens_at', 'closes_at'] as const).map(field => (
+                    <Pressable key={field} onPress={() => openTimePicker(field)} style={[styles.timeBtn, styles.flex1]}>
+                      <Feather name={field === 'opens_at' ? 'sunrise' : 'sunset'} size={13} color={colors.muted} />
+                      <Text style={styles.timeBtnLabel}>{field === 'opens_at' ? 'Opens' : 'Closes'}</Text>
+                      <Text style={styles.timeBtnValue}>
+                        {formatTimeDisplay(modal?.[field] || (field === 'opens_at' ? '09:00' : '21:00'))}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <View style={styles.locationHeader}>
+                  <Text style={styles.label}>Location (lat / lng)</Text>
+                  <Pressable onPress={() => setMapVisible(true)} style={styles.mapPickBtn}>
+                    <Feather name="map-pin" size={13} color={colors.brandPrimary} />
+                    <Text style={styles.mapPickBtnText}>Pick on map</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.row}>
+                  <TextInput
+                    testID="store-latitude"
+                    style={[styles.input, styles.flex1]}
+                    placeholder="Latitude"
+                    placeholderTextColor={colors.muted}
+                    value={modal?.latitude}
+                    onChangeText={v => setModal(m => m ? { ...m, latitude: v } : null)}
+                    keyboardType="decimal-pad"
+                  />
+                  <TextInput
+                    testID="store-longitude"
+                    style={[styles.input, styles.flex1]}
+                    placeholder="Longitude"
+                    placeholderTextColor={colors.muted}
+                    value={modal?.longitude}
+                    onChangeText={v => setModal(m => m ? { ...m, longitude: v } : null)}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+
+                <View style={styles.actions}>
+                  <Pressable onPress={() => setModal(null)} style={[styles.mBtn, styles.mBtnGhost]}>
+                    <Text style={styles.mBtnGhostText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable testID="save-store" onPress={save} disabled={saving} style={[styles.mBtn, { backgroundColor: colors.brandPrimary }]}>
+                    {saving ? <ActivityIndicator color={colors.onBrandPrimary} /> : <Text style={styles.mBtnText}>Save</Text>}
+                  </Pressable>
+                </View>
+              </ScrollView>
+            </View>
           </View>
-          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <TextInput testID="store-latitude" style={[styles.input, { flex: 1 }]} placeholder="Latitude (e.g. 17.385 N)" placeholderTextColor={colors.muted} value={modal?.latitude ?? ''} onChangeText={v => setModal((m: any) => ({ ...m, latitude: v }))} autoCapitalize="characters" />
-            <TextInput testID="store-longitude" style={[styles.input, { flex: 1 }]} placeholder="Longitude (e.g. 78.486 E)" placeholderTextColor={colors.muted} value={modal?.longitude ?? ''} onChangeText={v => setModal((m: any) => ({ ...m, longitude: v }))} autoCapitalize="characters" />
-          </View>
-          <View style={styles.actions}>
-            <Pressable onPress={() => setModal(null)} style={[styles.mBtn, styles.mBtnGhost]}><Text style={styles.mBtnGhostText}>Cancel</Text></Pressable>
-            <Pressable testID="save-store" onPress={save} style={[styles.mBtn, { backgroundColor: colors.brandPrimary }]}><Text style={styles.mBtnText}>Save</Text></Pressable>
-          </View>
-        </ScrollView></View></View>
+        </KeyboardAvoidingView>
       </Modal>
+
+      {/* ── Time picker modal ── */}
+      <Modal visible={timePickerFor !== null} transparent animationType="slide" onRequestClose={cancelTimePicker}>
+        <View style={styles.backdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={cancelTimePicker} />
+          <View style={styles.timeSheet}>
+            <View style={styles.timeSheetHeader}>
+              <Pressable onPress={cancelTimePicker} hitSlop={12}>
+                <Text style={styles.timeSheetCancel}>Cancel</Text>
+              </Pressable>
+              <Text style={styles.timeSheetTitle}>
+                {timePickerFor === 'opens_at' ? 'Opening Time' : 'Closing Time'}
+              </Text>
+              <Pressable onPress={() => setTimePickerFor(null)} hitSlop={12}>
+                <Text style={styles.timeSheetDone}>Done</Text>
+              </Pressable>
+            </View>
+            {timePickerFor !== null && (
+              <TimePickerWheel
+                value={modal?.[timePickerFor] || (timePickerFor === 'opens_at' ? '09:00' : '21:00')}
+                onChange={v => setModal(m => m ? { ...m, [timePickerFor!]: v } : null)}
+              />
+            )}
+            <View style={{ height: 32 }} />
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Map picker (native: full map; web: no-op stub) ── */}
+      <StoreMapPicker
+        visible={mapVisible}
+        latitude={modal?.latitude ?? ''}
+        longitude={modal?.longitude ?? ''}
+        onConfirm={(lat, lng) => {
+          setModal(m => m ? { ...m, latitude: lat, longitude: lng } : null);
+          setMapVisible(false);
+        }}
+        onClose={() => setMapVisible(false)}
+      />
     </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.surface },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -84,14 +267,33 @@ const styles = StyleSheet.create({
   addBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.brandPrimary, alignItems: 'center', justifyContent: 'center' },
   empty: { color: colors.muted, textAlign: 'center', marginTop: spacing.xl, fontFamily: fonts.text },
   card: { backgroundColor: colors.surfaceSecondary, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md },
-  name: { fontFamily: fonts.textBold, color: colors.onSurface, fontSize: 15 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  name: { fontFamily: fonts.textBold, color: colors.onSurface, fontSize: 15, flex: 1 },
+  editBtn: { padding: 4, marginLeft: spacing.sm },
   line: { fontFamily: fonts.text, color: colors.onSurfaceTertiary, fontSize: 13, marginTop: 2 },
+  coordRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  coordText: { fontFamily: fonts.text, color: colors.muted, fontSize: 12 },
   meta: { fontFamily: fonts.textMedium, color: colors.muted, fontSize: 12, marginTop: spacing.sm },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modal: { backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.xl, maxHeight: '90%' },
+  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.xl, maxHeight: '90%' },
   modalTitle: { fontFamily: fonts.display, fontSize: 20, color: colors.onSurface, marginBottom: spacing.md },
-  input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm, fontFamily: fonts.text, color: colors.onSurface, backgroundColor: colors.surfaceSecondary },
-  actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  label: { fontFamily: fonts.textBold, fontSize: 11, color: colors.muted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: spacing.xs, marginTop: spacing.sm },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.xs, fontFamily: fonts.text, color: colors.onSurface, backgroundColor: colors.surfaceSecondary },
+  multiline: { minHeight: 72, textAlignVertical: 'top' },
+  row: { flexDirection: 'row', gap: spacing.sm },
+  flex1: { flex: 1 },
+  timeBtn: { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, paddingVertical: spacing.md, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surfaceSecondary },
+  timeBtnLabel: { fontFamily: fonts.text, fontSize: 10, color: colors.muted, letterSpacing: 0.5, textTransform: 'uppercase' },
+  timeBtnValue: { fontFamily: fonts.textBold, fontSize: 18, color: colors.onSurface },
+  timeSheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg },
+  timeSheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  timeSheetTitle: { fontFamily: fonts.textMedium, fontSize: 15, color: colors.onSurface },
+  timeSheetCancel: { fontFamily: fonts.textMedium, fontSize: 15, color: colors.muted },
+  timeSheetDone: { fontFamily: fonts.textBold, fontSize: 15, color: colors.brandPrimary },
+  locationHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm },
+  mapPickBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: spacing.sm, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.brandPrimary },
+  mapPickBtnText: { fontFamily: fonts.textBold, fontSize: 12, color: colors.brandPrimary },
+  actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
   mBtn: { flex: 1, paddingVertical: spacing.md, borderRadius: radius.md, alignItems: 'center' },
   mBtnGhost: { borderWidth: 1, borderColor: colors.border },
   mBtnGhostText: { fontFamily: fonts.textMedium, color: colors.onSurface },

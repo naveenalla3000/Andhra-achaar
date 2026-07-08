@@ -24,14 +24,18 @@ export default function SellerOrders() {
   const [dateModal, setDateModal] = useState<{ orderId: string; date: string } | null>(null);
 
   const load = useCallback(async () => {
-    if (!profile?.store_id) return;
+    if (!profile?.store_id) { setLoading(false); return; }
     setLoading(true);
-    const { data } = await supabase
-      .from('orders')
-      .select('id,status,total_inr,ready_date,created_at,customer:user_profiles(full_name),order_items(pickle_name,packaging_label,quantity)')
-      .eq('store_id', profile.store_id)
-      .order('created_at', { ascending: false });
-    setOrders(data || []); setLoading(false);
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id,status,total_inr,ready_date,created_at,customer:user_profiles(full_name),order_items(pickle_name,variant_label,packaging_type_name,quantity)')
+        .eq('store_id', profile.store_id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setOrders(data || []);
+    } catch {}
+    setLoading(false);
   }, [profile?.store_id]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -80,7 +84,9 @@ export default function SellerOrders() {
                 </View>
               </View>
               {(item.order_items || []).map((oi: any, i: number) => (
-                <Text key={i} style={styles.line}>{oi.quantity}× {oi.pickle_name} ({oi.packaging_label})</Text>
+                <Text key={i} style={styles.line}>
+                  {oi.quantity}× {oi.pickle_name} ({[oi.variant_label, oi.packaging_type_name].filter(Boolean).join(' · ')})
+                </Text>
               ))}
               <View style={styles.rowBetween}>
                 <Text style={styles.date}>{new Date(item.created_at).toLocaleString()}</Text>

@@ -48,19 +48,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
       if (!data) {
-        // Self-heal: profile row was deleted but auth.users still exists.
-        // heal_profile() is security definer so it can insert past RLS,
-        // and always creates as role='customer' server-side.
-        const { data: healed, error: healErr } = await supabase.rpc('heal_profile');
-        if (healErr || !healed) {
-          setProfile(null);
-          setProfileError(
-            `No profile found and self-heal failed: ${healErr?.message || 'unknown error'}`
-          );
-          return;
-        }
-        setProfile(healed as Profile);
-        setProfileError(null);
+        setProfile(null);
+        setProfileError('no_profile');
         return;
       }
       setProfile(data as Profile);

@@ -15,7 +15,6 @@ export default function CustomerTabs() {
       tabBarLabelStyle: { fontFamily: fonts.textMedium, fontSize: 11 },
     }}>
       <Tabs.Screen name="home" options={{ title: 'Home', tabBarIcon: ({ color, size }) => <Feather name="home" size={size} color={color} /> }} />
-      <Tabs.Screen name="stores" options={{ title: 'Stores', tabBarIcon: ({ color, size }) => <Feather name="map-pin" size={size} color={color} /> }} />
       <Tabs.Screen name="cart" options={{ title: 'Cart', tabBarIcon: ({ color, size }) => <Feather name="shopping-bag" size={size} color={color} /> }} />
       <Tabs.Screen name="account" options={{ title: 'Account', tabBarIcon: ({ color, size }) => <Feather name="user" size={size} color={color} /> }} />
     </Tabs>

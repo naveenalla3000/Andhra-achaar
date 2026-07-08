@@ -5,6 +5,7 @@ import { LogBox } from 'react-native';
 import * as Font from 'expo-font';
 import { useState } from 'react';
 
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useIconFonts } from '@/src/hooks/use-icon-fonts';
 import { AuthProvider } from '@/src/lib/auth-context';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -41,10 +42,12 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <Stack screenOptions={{ headerShown: false }} />
-      </AuthProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <Stack screenOptions={{ headerShown: false }} />
+        </AuthProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

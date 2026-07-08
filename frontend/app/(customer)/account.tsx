@@ -16,7 +16,7 @@ export default function Account() {
     setLoading(true);
     const { data } = await supabase
       .from('orders')
-      .select('id,status,total_inr,ready_date,created_at,store:stores(name),order_items(pickle_name,packaging_label,quantity,line_total_inr)')
+      .select('id,status,total_inr,ready_date,created_at,store:stores(name),order_items(pickle_name,variant_label,quantity,line_total_inr)')
       .eq('customer_id', profile.id)
       .order('created_at', { ascending: false });
     setOrders(data || []); setLoading(false);
@@ -53,7 +53,7 @@ export default function Account() {
                   </View>
                 </View>
                 {(item.order_items || []).map((oi: any, idx: number) => (
-                  <Text key={idx} style={styles.line}>{oi.quantity}× {oi.pickle_name} ({oi.packaging_label})</Text>
+                  <Text key={idx} style={styles.line}>{oi.quantity}× {oi.pickle_name} ({oi.variant_label})</Text>
                 ))}
                 <View style={styles.rowBetween}>
                   <Text style={styles.date}>{new Date(item.created_at).toLocaleDateString()}</Text>
