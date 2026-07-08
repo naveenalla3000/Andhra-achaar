@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 0gI0og2EUuvtWc4IwVRIFgrm8pO3M8Palo8j9yeqfXJKwKeRfaJJCwBmYMHbZpM
+\restrict XTiYsklEmBYvgZyDfBg7JQU1nenVQ6SYHCiZ52dLqvuVNflSzRyEvt1iY48gHen
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4
@@ -76,7 +76,8 @@ CREATE TABLE public.orders (
     ready_date date,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    store_name text
+    store_name text,
+    store_address text
 );
 
 
@@ -109,14 +110,14 @@ begin
     join public.pickles p on p.id = c.pickle_id
     where c.customer_id = v_customer
   loop
-    insert into public.orders (customer_id, store_id, store_name, status, total_inr)
+    insert into public.orders (customer_id, store_id, store_name, store_address, status, total_inr)
     select
-      v_customer, v_store, s.name, 'placed',
+      v_customer, v_store, s.name, s.address, 'placed',
       sum((vp.selling_price_inr + vp.packaging_cost) * c.quantity)
     from public.cart_items c
-    join public.pickles p       on p.id = c.pickle_id
+    join public.pickles            p  on p.id  = c.pickle_id
     join public.variant_packagings vp on vp.id = c.variant_packaging_id
-    join public.stores s         on s.id = p.store_id
+    join public.stores             s  on s.id  = p.store_id
     where c.customer_id = v_customer and p.store_id = v_store
     returning * into v_order;
 
@@ -1205,5 +1206,5 @@ CREATE POLICY "variants public read" ON public.pickle_variants FOR SELECT TO aut
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 0gI0og2EUuvtWc4IwVRIFgrm8pO3M8Palo8j9yeqfXJKwKeRfaJJCwBmYMHbZpM
+\unrestrict XTiYsklEmBYvgZyDfBg7JQU1nenVQ6SYHCiZ52dLqvuVNflSzRyEvt1iY48gHen
 
