@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 5vmvaPuD5lkPwgz3sXt1Qy2ff55Wqx6wcjIC51mS5PS8oydKdy9Sidfhvhm7xOX
+\restrict 5f7TyEbIAOJMufZqpKhDsjeqvfMIQElCrY4UN7sQAK0b8RJzGSss4m6MHLOauZf
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4
@@ -122,14 +122,16 @@ begin
     returning * into v_order;
 
     insert into public.order_items (
-      order_id, pickle_id, pickle_name,
+      order_id,
+      pickle_id, pickle_name, pickle_image_url,
       variant_id, variant_label,
       packaging_type_name,
       selling_price_inr, packaging_cost, mrp_inr, discount_pct,
       unit_price_inr, quantity, line_total_inr
     )
     select
-      v_order.id, p.id, p.name,
+      v_order.id,
+      p.id, p.name, p.image_url,
       pv.id, pv.label,
       pt.name,
       vp.selling_price_inr, vp.packaging_cost, vp.mrp_inr, vp.discount_pct,
@@ -296,7 +298,8 @@ CREATE TABLE public.order_items (
     selling_price_inr numeric(10,2),
     packaging_cost numeric(10,2),
     mrp_inr numeric(10,2),
-    discount_pct numeric(5,2)
+    discount_pct numeric(5,2),
+    pickle_image_url text
 );
 
 
@@ -1198,5 +1201,5 @@ CREATE POLICY "variants public read" ON public.pickle_variants FOR SELECT TO aut
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 5vmvaPuD5lkPwgz3sXt1Qy2ff55Wqx6wcjIC51mS5PS8oydKdy9Sidfhvhm7xOX
+\unrestrict 5f7TyEbIAOJMufZqpKhDsjeqvfMIQElCrY4UN7sQAK0b8RJzGSss4m6MHLOauZf
 
