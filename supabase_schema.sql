@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict XTiYsklEmBYvgZyDfBg7JQU1nenVQ6SYHCiZ52dLqvuVNflSzRyEvt1iY48gHen
+\restrict 5vmvaPuD5lkPwgz3sXt1Qy2ff55Wqx6wcjIC51mS5PS8oydKdy9Sidfhvhm7xOX
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4
@@ -722,14 +722,6 @@ ALTER TABLE ONLY public.orders
 
 
 --
--- Name: orders orders_store_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.orders
-    ADD CONSTRAINT orders_store_id_fkey FOREIGN KEY (store_id) REFERENCES public.stores(id) ON DELETE SET NULL;
-
-
---
 -- Name: pickle_categories pickle_categories_category_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1206,5 +1198,5 @@ CREATE POLICY "variants public read" ON public.pickle_variants FOR SELECT TO aut
 -- PostgreSQL database dump complete
 --
 
-\unrestrict XTiYsklEmBYvgZyDfBg7JQU1nenVQ6SYHCiZ52dLqvuVNflSzRyEvt1iY48gHen
+\unrestrict 5vmvaPuD5lkPwgz3sXt1Qy2ff55Wqx6wcjIC51mS5PS8oydKdy9Sidfhvhm7xOX
 
