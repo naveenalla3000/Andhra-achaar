@@ -64,7 +64,7 @@ const sb = StyleSheet.create({
 });
 
 export default function ProductDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, variantId, packagingId } = useLocalSearchParams<{ id: string; variantId?: string; packagingId?: string }>();
   const [product, setProduct] = useState<any>(null);
   const [images, setImages] = useState<any[]>([]);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
@@ -149,9 +149,10 @@ export default function ProductDetail() {
           })),
       }));
       setVariants(vList);
-      const first = vList[0] ?? null;
-      setSelectedVariant(first);
-      setSelectedPackaging(first?.packagings[0] ?? null);
+      const targetVariant = (variantId ? vList.find(v => v.id === variantId) : null) ?? vList[0] ?? null;
+      setSelectedVariant(targetVariant);
+      const targetPkg = (packagingId ? targetVariant?.packagings.find(p => p.id === packagingId) : null) ?? targetVariant?.packagings[0] ?? null;
+      setSelectedPackaging(targetPkg ?? null);
 
       const imgList = imgs && imgs.length > 0
         ? imgs
