@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict GzNruvUayH5yDoI9lMlqGCccPFW0cSfALoyTRFk2xHMDRyrGg1wdsz8eY9jNdOM
+\restrict 0gI0og2EUuvtWc4IwVRIFgrm8pO3M8Palo8j9yeqfXJKwKeRfaJJCwBmYMHbZpM
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4
@@ -75,7 +75,8 @@ CREATE TABLE public.orders (
     total_inr numeric(10,2) DEFAULT 0 NOT NULL,
     ready_date date,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    store_name text
 );
 
 
@@ -108,26 +109,36 @@ begin
     join public.pickles p on p.id = c.pickle_id
     where c.customer_id = v_customer
   loop
-    insert into public.orders (customer_id, store_id, status, total_inr)
-    select v_customer, v_store, 'placed',
-      sum(vp.selling_price_inr * c.quantity)
+    insert into public.orders (customer_id, store_id, store_name, status, total_inr)
+    select
+      v_customer, v_store, s.name, 'placed',
+      sum((vp.selling_price_inr + vp.packaging_cost) * c.quantity)
     from public.cart_items c
-    join public.pickles p on p.id = c.pickle_id
+    join public.pickles p       on p.id = c.pickle_id
     join public.variant_packagings vp on vp.id = c.variant_packaging_id
+    join public.stores s         on s.id = p.store_id
     where c.customer_id = v_customer and p.store_id = v_store
     returning * into v_order;
 
-    insert into public.order_items
-      (order_id, pickle_id, pickle_name, variant_label, packaging_type_name,
-       unit_price_inr, quantity, line_total_inr)
+    insert into public.order_items (
+      order_id, pickle_id, pickle_name,
+      variant_id, variant_label,
+      packaging_type_name,
+      selling_price_inr, packaging_cost, mrp_inr, discount_pct,
+      unit_price_inr, quantity, line_total_inr
+    )
     select
-      v_order.id, p.id, p.name, pv.label, pt.name,
-      vp.selling_price_inr, c.quantity, vp.selling_price_inr * c.quantity
+      v_order.id, p.id, p.name,
+      pv.id, pv.label,
+      pt.name,
+      vp.selling_price_inr, vp.packaging_cost, vp.mrp_inr, vp.discount_pct,
+      (vp.selling_price_inr + vp.packaging_cost), c.quantity,
+      (vp.selling_price_inr + vp.packaging_cost) * c.quantity
     from public.cart_items c
-    join public.pickles p on p.id = c.pickle_id
+    join public.pickles            p  on p.id  = c.pickle_id
     join public.variant_packagings vp on vp.id = c.variant_packaging_id
-    join public.prickel_varients pv on pv.id = vp.variant_id
-    join public.packaging_types pt on pt.id = vp.packaging_type_id
+    join public.pickle_variants    pv on pv.id = vp.variant_id
+    join public.packaging_types    pt on pt.id = vp.packaging_type_id
     where c.customer_id = v_customer and p.store_id = v_store;
 
     return next v_order;
@@ -273,14 +284,18 @@ CREATE TABLE public.home_sections (
 CREATE TABLE public.order_items (
     id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     order_id uuid NOT NULL,
-    pickle_id uuid NOT NULL,
+    pickle_id uuid,
     pickle_name text NOT NULL,
     unit_price_inr numeric(10,2) NOT NULL,
     quantity integer NOT NULL,
     line_total_inr numeric(10,2) NOT NULL,
     variant_id uuid,
     variant_label text,
-    packaging_type_name text
+    packaging_type_name text,
+    selling_price_inr numeric(10,2),
+    packaging_cost numeric(10,2),
+    mrp_inr numeric(10,2),
+    discount_pct numeric(5,2)
 );
 
 
@@ -698,22 +713,6 @@ ALTER TABLE ONLY public.order_items
 
 
 --
--- Name: order_items order_items_pickle_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.order_items
-    ADD CONSTRAINT order_items_pickle_id_fkey FOREIGN KEY (pickle_id) REFERENCES public.pickles(id);
-
-
---
--- Name: order_items order_items_variant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.order_items
-    ADD CONSTRAINT order_items_variant_id_fkey FOREIGN KEY (variant_id) REFERENCES public.pickle_variants(id);
-
-
---
 -- Name: orders orders_customer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -726,7 +725,7 @@ ALTER TABLE ONLY public.orders
 --
 
 ALTER TABLE ONLY public.orders
-    ADD CONSTRAINT orders_store_id_fkey FOREIGN KEY (store_id) REFERENCES public.stores(id) ON DELETE CASCADE;
+    ADD CONSTRAINT orders_store_id_fkey FOREIGN KEY (store_id) REFERENCES public.stores(id) ON DELETE SET NULL;
 
 
 --
@@ -1206,5 +1205,5 @@ CREATE POLICY "variants public read" ON public.pickle_variants FOR SELECT TO aut
 -- PostgreSQL database dump complete
 --
 
-\unrestrict GzNruvUayH5yDoI9lMlqGCccPFW0cSfALoyTRFk2xHMDRyrGg1wdsz8eY9jNdOM
+\unrestrict 0gI0og2EUuvtWc4IwVRIFgrm8pO3M8Palo8j9yeqfXJKwKeRfaJJCwBmYMHbZpM
 
