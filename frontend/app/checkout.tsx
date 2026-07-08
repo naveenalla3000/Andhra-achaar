@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Pressable,
-  ActivityIndicator, Alert, TextInput,
+  ActivityIndicator, Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,7 +22,6 @@ export default function Checkout() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [placing, setPlacing] = useState(false);
-  const [notes, setNotes] = useState('');
 
   const load = useCallback(async () => {
     if (!profile) return;
@@ -154,9 +153,9 @@ export default function Checkout() {
                       ) : null}
                     </View>
                   </View>
-                  <View style={styles.qtyPrice}>
-                    <Text style={styles.qtyBadge}>×{it.quantity}</Text>
+                  <View style={styles.priceQtyCol}>
                     <Text style={styles.lineTotal}>₹{fmt(lineTotal)}</Text>
+                    <Text style={styles.qtyBadge}>×{it.quantity}</Text>
                   </View>
                 </View>
               );
@@ -169,27 +168,8 @@ export default function Checkout() {
               <Text style={styles.subVal}>₹{fmt(g.subtotal)}</Text>
             </View>
 
-            <View style={styles.pickupBanner}>
-              <Feather name="shopping-bag" size={13} color={colors.brandPrimary} />
-              <Text style={styles.pickupText}>Pickup · Pay at store</Text>
-            </View>
           </View>
         ))}
-
-        {/* Notes */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notes</Text>
-          <TextInput
-            style={styles.notesInput}
-            placeholder="Any special instructions? (optional)"
-            placeholderTextColor={colors.muted}
-            value={notes}
-            onChangeText={setNotes}
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
-          />
-        </View>
 
         {/* Price breakdown */}
         <View style={styles.section}>
@@ -247,19 +227,19 @@ const styles = StyleSheet.create({
   storeIconWrap: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.brandPrimary + '15', alignItems: 'center', justifyContent: 'center' },
   storeName: { fontFamily: fonts.textBold, fontSize: 14, color: colors.onSurface },
 
-  itemRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
-  itemThumb: { width: 52, height: 52, borderRadius: radius.sm, backgroundColor: colors.surfaceTertiary, flexShrink: 0 },
+  itemRow: { flexDirection: 'row', alignItems: 'stretch', gap: spacing.sm, paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
+  itemThumb: { aspectRatio: 1, alignSelf: 'stretch', borderRadius: radius.sm, backgroundColor: colors.surfaceTertiary, flexShrink: 0 },
   itemBody: { flex: 1, gap: 4 },
   itemName: { fontFamily: fonts.textMedium, fontSize: 13, color: colors.onSurface },
   labelCol: { flexDirection: 'column', alignItems: 'flex-start', gap: 3 },
   sizeChip: { fontFamily: fonts.textBold, fontSize: 11, color: colors.brandPrimary, backgroundColor: colors.brandPrimary + '18', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  priceQtyCol: { alignItems: 'flex-end', gap: 4, flexShrink: 0 },
+  qtyBadge: { fontFamily: fonts.textBold, fontSize: 11, color: colors.brandPrimary, backgroundColor: colors.brandPrimary + '18', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   pkgChip: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   pkgImage: { width: 16, height: 16, borderRadius: 3 },
   pkgLabel: { fontFamily: fonts.text, fontSize: 11, color: colors.muted },
 
-  qtyPrice: { alignItems: 'flex-end', gap: 4, flexShrink: 0 },
-  qtyBadge: { fontFamily: fonts.text, fontSize: 12, color: colors.muted },
-  lineTotal: { fontFamily: fonts.textBold, fontSize: 14, color: colors.onSurface },
+  lineTotal: { fontFamily: fonts.textBold, fontSize: 14, color: colors.onSurface, flexShrink: 0 },
 
   divider: { height: 1, backgroundColor: colors.border, marginTop: spacing.sm },
 
@@ -272,8 +252,6 @@ const styles = StyleSheet.create({
 
   section: { marginBottom: spacing.md },
   sectionTitle: { fontFamily: fonts.textBold, fontSize: 11, color: colors.muted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: spacing.sm },
-
-  notesInput: { backgroundColor: colors.surfaceSecondary, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, fontFamily: fonts.text, fontSize: 14, color: colors.onSurface, minHeight: 80 },
 
   priceCard: { backgroundColor: colors.surfaceSecondary, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, gap: spacing.sm },
   priceRow: { flexDirection: 'row', justifyContent: 'space-between' },

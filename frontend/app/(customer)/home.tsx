@@ -14,6 +14,7 @@ import { colors, spacing, radius, fonts } from '@/src/lib/theme';
 
 interface VariantOption {
   vpId: string;
+  variantId: string;
   label: string;
   selling_price_inr: number;
   mrp_inr: number | null;
@@ -58,6 +59,7 @@ function toPickle(p: any): Pickle {
       .filter((vp: any) => vp.is_active)
       .map((vp: any) => ({
         vpId: vp.id,
+        variantId: v.id,
         label: v.label,
         selling_price_inr: vp.selling_price_inr ?? 0,
         mrp_inr: vp.mrp_inr ?? null,
@@ -92,16 +94,10 @@ function VegIndicator({ isVeg }: { isVeg: boolean | null }) {
 function CardPriceRow({ selling, mrp, discount }: {
   selling: number; mrp: number | null; discount: number | null;
 }) {
-  const hasDiscount = discount != null && discount > 0;
   return (
     <View style={styles.priceRow}>
       <Text style={styles.sellingPrice}>₹{selling}</Text>
-      {hasDiscount && mrp != null && <Text style={styles.mrpStrike}>₹{mrp}</Text>}
-      {hasDiscount && (
-        <View style={styles.discountBadge}>
-          <Text style={styles.discountText}>{discount}% off</Text>
-        </View>
-      )}
+      {mrp != null && mrp > selling && <Text style={styles.mrpStrike}>₹{mrp}</Text>}
     </View>
   );
 }
@@ -140,7 +136,7 @@ function PickleCard({ item, layout = 'card', cartMap, onAdd, onDelta, onPress }:
   item: Pickle; layout?: 'card' | 'grid' | 'list';
   cartMap: Record<string, number>;
   onAdd: AddFn; onDelta: DeltaFn;
-  onPress: (id: string) => void;
+  onPress: (id: string, variantId: string, packagingId: string) => void;
 }) {
   const [selectedVpId, setSelectedVpId] = useState<string | null>(item.first_vp_id);
 
@@ -178,15 +174,22 @@ function PickleCard({ item, layout = 'card', cartMap, onAdd, onDelta, onPress }:
 
   if (layout === 'list') {
     return (
-      <Pressable testID={`pickle-card-${item.id}`} onPress={() => onPress(item.id)} style={styles.listRow}>
-        <Image source={item.image_url || FALLBACK_IMG} style={styles.listImg} contentFit="cover" />
+      <Pressable testID={`pickle-card-${item.id}`} onPress={() => onPress(item.id, selectedOption?.variantId ?? '', selectedVpId ?? '')} style={styles.listRow}>
+        <View style={styles.listImgWrap}>
+          <Image source={item.image_url || FALLBACK_IMG} style={styles.listImg} contentFit="cover" />
+          {selectedOption?.discount_pct != null && selectedOption.discount_pct > 0 && (
+            <View style={styles.listDiscountBadge}>
+              <Text style={styles.listDiscountText}>{selectedOption.discount_pct}% off</Text>
+            </View>
+          )}
+        </View>
         <View style={styles.listInfo}>
           <View style={styles.nameRow}>
             <VegIndicator isVeg={item.is_veg} />
             <Text style={styles.listName} numberOfLines={2}>{item.name}</Text>
           </View>
           {selectedOption && selectedOption.selling_price_inr > 0 && (
-            <CardPriceRow selling={selectedOption.selling_price_inr} mrp={selectedOption.mrp_inr} discount={selectedOption.discount_pct} />
+            <CardPriceRow selling={selectedOption.selling_price_inr} mrp={selectedOption.mrp_inr} discount={null} />
           )}
           {footer}
         </View>
@@ -195,17 +198,24 @@ function PickleCard({ item, layout = 'card', cartMap, onAdd, onDelta, onPress }:
   }
 
   return (
-    <Pressable testID={`pickle-card-${item.id}`} onPress={() => onPress(item.id)}
+    <Pressable testID={`pickle-card-${item.id}`} onPress={() => onPress(item.id, selectedOption?.variantId ?? '', selectedVpId ?? '')}
       style={layout === 'grid' ? styles.gridCard : styles.card}>
-      <Image source={item.image_url || FALLBACK_IMG}
-        style={layout === 'grid' ? styles.gridCardImg : styles.cardImg} contentFit="cover" />
+      <View>
+        <Image source={item.image_url || FALLBACK_IMG}
+          style={layout === 'grid' ? styles.gridCardImg : styles.cardImg} contentFit="cover" />
+        {selectedOption?.discount_pct != null && selectedOption.discount_pct > 0 && (
+          <View style={styles.listDiscountBadge}>
+            <Text style={styles.listDiscountText}>{selectedOption.discount_pct}% off</Text>
+          </View>
+        )}
+      </View>
       <View style={styles.cardInfo}>
         <View style={styles.nameRow}>
           <VegIndicator isVeg={item.is_veg} />
           <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
         </View>
         {selectedOption && selectedOption.selling_price_inr > 0 && (
-          <CardPriceRow selling={selectedOption.selling_price_inr} mrp={selectedOption.mrp_inr} discount={selectedOption.discount_pct} />
+          <CardPriceRow selling={selectedOption.selling_price_inr} mrp={selectedOption.mrp_inr} discount={null} />
         )}
         {footer}
       </View>
@@ -338,8 +348,8 @@ export default function CustomerHome() {
     }
   }, [profile]);
 
-  const goToProduct = useCallback((id: string) => {
-    router.push({ pathname: '/product/[id]', params: { id } });
+  const goToProduct = useCallback((id: string, variantId: string, packagingId: string) => {
+    router.push({ pathname: '/product/[id]', params: { id, variantId, packagingId } });
   }, [router]);
 
   if (loading) return <View style={styles.center}><ActivityIndicator color={colors.brandPrimary} /></View>;
@@ -475,7 +485,10 @@ const styles = StyleSheet.create({
   // List
   listWrap: { paddingHorizontal: spacing.xl, gap: spacing.sm },
   listRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, backgroundColor: colors.surfaceSecondary, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.sm },
+  listImgWrap: { position: 'relative' },
   listImg: { width: 72, height: 72, borderRadius: radius.sm, backgroundColor: colors.surfaceTertiary },
+  listDiscountBadge: { position: 'absolute', top: 4, right: 4, backgroundColor: colors.success, borderRadius: 3, paddingHorizontal: 4, paddingVertical: 2 },
+  listDiscountText: { fontFamily: fonts.textBold, fontSize: 9, color: '#fff' },
   listInfo: { flex: 1, paddingTop: 2 },
   listName: { fontFamily: fonts.textMedium, fontSize: 13, color: colors.onSurface, flex: 1 },
 
