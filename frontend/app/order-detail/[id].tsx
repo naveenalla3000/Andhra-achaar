@@ -282,14 +282,14 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   storeImg: {
-    width: 72, height: 72,
-    borderRadius: radius.md,
+    width: 52, height: 52,
+    borderRadius: radius.sm,
     backgroundColor: colors.surfaceTertiary,
     flexShrink: 0,
   },
   storeImgPlaceholder: {
-    width: 72, height: 72,
-    borderRadius: radius.md,
+    width: 52, height: 52,
+    borderRadius: radius.sm,
     backgroundColor: colors.brandPrimary + '14',
     flexShrink: 0,
     alignItems: 'center',
