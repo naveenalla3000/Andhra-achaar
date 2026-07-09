@@ -177,7 +177,7 @@ export default function Orders() {
               >
                 <View style={styles.rowBetween}>
                   <Text style={styles.date}>
-                    {new Date(group.created_at).toLocaleString('en-IN', {
+                    Ordered: {new Date(group.created_at).toLocaleString('en-IN', {
                       day: 'numeric', month: 'short', year: 'numeric',
                       hour: '2-digit', minute: '2-digit',
                     })}
