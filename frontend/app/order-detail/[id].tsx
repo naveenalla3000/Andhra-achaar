@@ -9,7 +9,6 @@ import { useAuth } from '@/src/lib/auth-context';
 import { colors, spacing, radius, fonts, statusColors } from '@/src/lib/theme';
 
 const fmt = (n: number) => Math.round(n).toLocaleString('en-IN');
-const FALLBACK = 'https://images.unsplash.com/photo-1617854307432-13950e24ba07?w=120&q=60';
 
 function pickupCode(orderId: string): string {
   const n = parseInt(orderId.replace(/-/g, '').slice(0, 8), 16);
@@ -111,11 +110,13 @@ export default function OrderDetail() {
                 <View key={order.id} style={[styles.storeSection, !isLast && styles.sectionDivider]}>
                   {/* Store info card */}
                   <View style={styles.storeCard}>
-                    <Image
-                      source={order.store_image_url || FALLBACK}
-                      style={styles.storeThumb}
-                      contentFit="cover"
-                    />
+                    {order.store_image_url ? (
+                      <Image source={order.store_image_url} style={styles.storeThumb} contentFit="cover" />
+                    ) : (
+                      <View style={styles.storeThumbPlaceholder}>
+                        <Feather name="home" size={22} color={colors.muted} />
+                      </View>
+                    )}
                     <View style={styles.storeCardBody}>
                       <View style={styles.storeNameRow}>
                         <Text style={styles.storeName} numberOfLines={1}>{order.store_name ?? '—'}</Text>
@@ -251,6 +252,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     backgroundColor: colors.surfaceTertiary,
     flexShrink: 0,
+  },
+  storeThumbPlaceholder: {
+    width: 56, height: 56,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceTertiary,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   storeCardBody: { flex: 1, gap: 4 },
   storeNameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
