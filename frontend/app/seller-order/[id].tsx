@@ -41,6 +41,7 @@ const TL_ICON: Record<string, keyof typeof Feather.glyphMap> = {
   placed: 'shopping-bag',
   accepted: 'check-circle',
   ready_date_set: 'calendar',
+  ready_date_changed: 'refresh-cw',
   ready_for_takeaway: 'package',
   completed: 'check-circle',
   cancelled: 'x-circle',
@@ -52,6 +53,7 @@ const TL_COLOR: Record<string, string> = {
   placed: colors.muted,
   accepted: colors.success,
   ready_date_set: colors.brandPrimary,
+  ready_date_changed: colors.brandPrimary,
   ready_for_takeaway: colors.brandPrimary,
   completed: colors.success,
   cancelled: colors.error,
@@ -64,6 +66,7 @@ function tLabel(ev: TimelineEvent): string {
   if (ev.event_type === 'assigned') return `Assigned to ${ev.sub_seller_name ?? 'sub-seller'}`;
   if (ev.event_type === 'unassigned')
     return ev.sub_seller_name ? `Unassigned from ${ev.sub_seller_name}` : 'Assignment removed';
+  if (ev.event_type === 'ready_date_changed') return 'Pickup time updated';
   const map: Record<string, string> = {
     accepted: 'Order accepted',
     ready_date_set: 'Ready date & time set',
