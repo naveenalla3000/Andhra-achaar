@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Linking } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -8,6 +9,7 @@ import { useAuth } from '@/src/lib/auth-context';
 import { colors, spacing, radius, fonts, statusColors } from '@/src/lib/theme';
 
 const fmt = (n: number) => Math.round(n).toLocaleString('en-IN');
+const FALLBACK = 'https://images.unsplash.com/photo-1617854307432-13950e24ba07?w=120&q=60';
 
 function pickupCode(orderId: string): string {
   const n = parseInt(orderId.replace(/-/g, '').slice(0, 8), 16);
@@ -30,6 +32,11 @@ type StoreOrder = {
   ready_date: string | null;
   created_at: string;
   store_name: string | null;
+  store_image_url: string | null;
+  store_address: string | null;
+  store_latitude: number | null;
+  store_longitude: number | null;
+  store_contact_number: string | null;
   order_items: OrderItem[];
 };
 
@@ -45,7 +52,12 @@ export default function OrderDetail() {
     setLoading(true);
     const { data } = await supabase
       .from('orders')
-      .select('id, order_ref, status, total_inr, ready_date, created_at, store_name, order_items(id, pickle_name, variant_label, quantity, line_total_inr)')
+      .select(`
+        id, order_ref, status, total_inr, ready_date, created_at,
+        store_name, store_image_url, store_address,
+        store_latitude, store_longitude, store_contact_number,
+        order_items(id, pickle_name, variant_label, quantity, line_total_inr)
+      `)
       .eq('checkout_id', id)
       .order('created_at', { ascending: true });
     setOrders(data || []);
@@ -68,9 +80,7 @@ export default function OrderDetail() {
         <View style={{ flex: 1 }}>
           {firstOrder ? (
             <>
-              <Text style={styles.orderRef}>
-                Order #{firstOrder.order_ref}
-              </Text>
+              <Text style={styles.orderRef}>Order #{firstOrder.order_ref}</Text>
               <Text style={styles.orderDate}>
                 {new Date(firstOrder.created_at).toLocaleString('en-IN', {
                   day: 'numeric', month: 'short', year: 'numeric',
@@ -90,33 +100,71 @@ export default function OrderDetail() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          {/* Per-store sections */}
           <View style={styles.card}>
             {orders.map((order, idx) => {
               const s = statusColors[order.status] || { bg: colors.surfaceTertiary, fg: colors.onSurface, label: order.status };
               const showPickup = order.status === 'ready_for_takeaway' || order.status === 'completed';
               const isLast = idx === orders.length - 1;
+              const hasLocation = order.store_latitude != null && order.store_longitude != null;
 
               return (
                 <View key={order.id} style={[styles.storeSection, !isLast && styles.sectionDivider]}>
-                  {/* Store name + status */}
-                  <View style={styles.rowBetween}>
-                    <Text style={styles.storeName} numberOfLines={1}>{order.store_name ?? '—'}</Text>
-                    <View style={[styles.badge, { backgroundColor: s.bg }]}>
-                      <Text style={[styles.badgeText, { color: s.fg }]}>{s.label}</Text>
+                  {/* Store info card */}
+                  <View style={styles.storeCard}>
+                    <Image
+                      source={order.store_image_url || FALLBACK}
+                      style={styles.storeThumb}
+                      contentFit="cover"
+                    />
+                    <View style={styles.storeCardBody}>
+                      <View style={styles.storeNameRow}>
+                        <Text style={styles.storeName} numberOfLines={1}>{order.store_name ?? '—'}</Text>
+                        <View style={[styles.badge, { backgroundColor: s.bg }]}>
+                          <Text style={[styles.badgeText, { color: s.fg }]}>{s.label}</Text>
+                        </View>
+                      </View>
+                      {order.store_address ? (
+                        <Text style={styles.storeAddress} numberOfLines={2}>{order.store_address}</Text>
+                      ) : null}
+                      <View style={styles.storeActions}>
+                        {order.store_contact_number ? (
+                          <Pressable
+                            style={styles.actionBtn}
+                            onPress={() => Linking.openURL(`tel:${order.store_contact_number}`)}
+                          >
+                            <Feather name="phone" size={13} color={colors.brandPrimary} />
+                            <Text style={styles.actionText}>Call</Text>
+                          </Pressable>
+                        ) : null}
+                        {hasLocation ? (
+                          <Pressable
+                            style={styles.actionBtn}
+                            onPress={() =>
+                              Linking.openURL(
+                                `https://www.google.com/maps/dir/?api=1&destination=${order.store_latitude},${order.store_longitude}`
+                              )
+                            }
+                          >
+                            <Feather name="navigation" size={13} color={colors.brandPrimary} />
+                            <Text style={styles.actionText}>Directions</Text>
+                          </Pressable>
+                        ) : null}
+                      </View>
                     </View>
                   </View>
 
                   {/* Item rows */}
-                  {(order.order_items || []).map((oi) => (
-                    <View key={oi.id} style={styles.itemRow}>
-                      <Text style={styles.itemName} numberOfLines={2}>
-                        {oi.quantity}× {oi.pickle_name}
-                        {oi.variant_label ? ` (${oi.variant_label})` : ''}
-                      </Text>
-                      <Text style={styles.itemPrice}>₹{fmt(Number(oi.line_total_inr))}</Text>
-                    </View>
-                  ))}
+                  <View style={styles.itemsBlock}>
+                    {(order.order_items || []).map((oi) => (
+                      <View key={oi.id} style={styles.itemRow}>
+                        <Text style={styles.itemName} numberOfLines={2}>
+                          {oi.quantity}× {oi.pickle_name}
+                          {oi.variant_label ? ` (${oi.variant_label})` : ''}
+                        </Text>
+                        <Text style={styles.itemPrice}>₹{fmt(Number(oi.line_total_inr))}</Text>
+                      </View>
+                    ))}
+                  </View>
 
                   {/* Ready date */}
                   {order.ready_date && (
@@ -194,14 +242,34 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  storeSection: { padding: spacing.lg, gap: spacing.sm },
+  storeSection: { padding: spacing.lg, gap: spacing.md },
   sectionDivider: { borderBottomWidth: 1, borderBottomColor: colors.border },
 
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  storeName: { fontFamily: fonts.textBold, fontSize: 15, color: colors.onSurface, flex: 1, marginRight: spacing.sm },
+  storeCard: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
+  storeThumb: {
+    width: 56, height: 56,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceTertiary,
+    flexShrink: 0,
+  },
+  storeCardBody: { flex: 1, gap: 4 },
+  storeNameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  storeName: { fontFamily: fonts.textBold, fontSize: 15, color: colors.onSurface, flex: 1 },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.pill, flexShrink: 0 },
   badgeText: { fontFamily: fonts.textBold, fontSize: 10, letterSpacing: 0.5 },
+  storeAddress: { fontFamily: fonts.text, fontSize: 12, color: colors.muted, lineHeight: 17 },
 
+  storeActions: { flexDirection: 'row', gap: spacing.sm, marginTop: 2 },
+  actionBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingVertical: 5, paddingHorizontal: spacing.sm,
+    borderRadius: radius.sm,
+    borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  actionText: { fontFamily: fonts.textMedium, fontSize: 12, color: colors.brandPrimary },
+
+  itemsBlock: { gap: spacing.xs },
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.sm },
   itemName: { fontFamily: fonts.text, fontSize: 13, color: colors.onSurfaceTertiary, flex: 1 },
   itemPrice: { fontFamily: fonts.textMedium, fontSize: 13, color: colors.onSurface, flexShrink: 0 },
@@ -213,7 +281,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     padding: spacing.md,
     gap: 4,
-    marginTop: spacing.xs,
   },
   pickupLabel: { fontFamily: fonts.text, fontSize: 11, color: colors.borderStrong },
   pickupCode: { fontFamily: fonts.display, fontSize: 26, color: colors.onBrandPrimary, letterSpacing: 6 },
@@ -221,7 +288,6 @@ const styles = StyleSheet.create({
   subtotalRow: {
     flexDirection: 'row', justifyContent: 'space-between',
     paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border,
-    marginTop: spacing.xs,
   },
   subtotalLabel: { fontFamily: fonts.textMedium, fontSize: 13, color: colors.muted },
   subtotalVal: { fontFamily: fonts.textBold, fontSize: 13, color: colors.onSurface },
@@ -233,14 +299,4 @@ const styles = StyleSheet.create({
   },
   totalLabel: { fontFamily: fonts.textBold, fontSize: 15, color: colors.onSurface },
   totalVal: { fontFamily: fonts.display, fontSize: 20, color: colors.onSurface },
-
-  actions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
-  actionBtn: {
-    flex: 1, paddingVertical: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1.5, borderColor: colors.border,
-    alignItems: 'center',
-    backgroundColor: colors.surfaceSecondary,
-  },
-  actionText: { fontFamily: fonts.textBold, fontSize: 14, color: colors.onSurface },
 });
