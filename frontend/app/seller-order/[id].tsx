@@ -196,6 +196,12 @@ export default function SellerOrderDetail() {
     }
   };
 
+  const handleChangeDatePress = () => {
+    const d = order.ready_date ? new Date(order.ready_date) : new Date();
+    setPickedDate(d);
+    setPickerStep('date');
+  };
+
   const verifyAndComplete = () => {
     const expected = pickupCode(order.id).replace(/\s/g, '');
     const entered = enteredCode.replace(/\s/g, '');
@@ -349,6 +355,14 @@ export default function SellerOrderDetail() {
             {showAdvance && (
               <Pressable onPress={handleAdvancePress} style={styles.advanceBtn}>
                 <Text style={styles.advanceBtnText}>{advanceLabel}</Text>
+              </Pressable>
+            )}
+
+            {/* Change ready date (while still in ready_date_set) */}
+            {showAdvance && order.status === 'ready_date_set' && (
+              <Pressable onPress={handleChangeDatePress} style={styles.changeDateRow}>
+                <Feather name="edit-2" size={13} color={colors.brandPrimary} />
+                <Text style={styles.changeDateText}>Change Date &amp; Time</Text>
               </Pressable>
             )}
 
@@ -574,6 +588,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md, alignItems: 'center',
   },
   advanceBtnText: { color: colors.onBrandPrimary, fontFamily: fonts.textBold, fontSize: 14 },
+  changeDateRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: spacing.xs, paddingVertical: spacing.sm,
+    borderTopWidth: 1, borderTopColor: colors.border,
+  },
+  changeDateText: { fontFamily: fonts.textMedium, fontSize: 13, color: colors.brandPrimary },
+
   assignRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border,
