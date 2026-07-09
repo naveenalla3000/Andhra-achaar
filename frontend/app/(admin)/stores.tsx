@@ -3,9 +3,11 @@ import {
   View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator,
   Modal, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/src/lib/supabase';
 import { colors, spacing, radius, fonts } from '@/src/lib/theme';
 import TimePickerWheel from '@/src/components/TimePickerWheel';
@@ -19,9 +21,14 @@ type Draft = {
   closes_at: string;
   latitude: string;
   longitude: string;
+  image_url: string;
+  contact_number: string;
 };
 
-const blankDraft = (): Draft => ({ name: '', address: '', opens_at: '09:00', closes_at: '21:00', latitude: '', longitude: '' });
+const blankDraft = (): Draft => ({
+  name: '', address: '', opens_at: '09:00', closes_at: '21:00',
+  latitude: '', longitude: '', image_url: '', contact_number: '',
+});
 
 const formatTimeDisplay = (hhmm: string): string => {
   const [h, m] = hhmm.split(':').map(Number);
@@ -37,6 +44,7 @@ export default function AdminStores() {
   const [modal, setModal] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
+  const [localImageUri, setLocalImageUri] = useState<string | null>(null);
 
   const [timePickerFor, setTimePickerFor] = useState<'opens_at' | 'closes_at' | null>(null);
   const timePickerOriginal = useRef('');
@@ -53,22 +61,63 @@ export default function AdminStores() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const openNew = () => setModal(blankDraft());
+  const openNew = () => {
+    setLocalImageUri(null);
+    setModal(blankDraft());
+  };
 
-  const openEdit = (item: any) => setModal({
-    id: item.id,
-    name: item.name || '',
-    address: item.address || '',
-    opens_at: item.opens_at || '09:00',
-    closes_at: item.closes_at || '21:00',
-    latitude: item.latitude != null ? String(item.latitude) : '',
-    longitude: item.longitude != null ? String(item.longitude) : '',
-  });
+  const openEdit = (item: any) => {
+    setLocalImageUri(null);
+    setModal({
+      id: item.id,
+      name: item.name || '',
+      address: item.address || '',
+      opens_at: item.opens_at || '09:00',
+      closes_at: item.closes_at || '21:00',
+      latitude: item.latitude != null ? String(item.latitude) : '',
+      longitude: item.longitude != null ? String(item.longitude) : '',
+      image_url: item.image_url || '',
+      contact_number: item.contact_number || '',
+    });
+  };
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setLocalImageUri(result.assets[0].uri);
+    }
+  };
 
   const save = async () => {
     if (!modal) return;
     if (!modal.name.trim() || !modal.address.trim()) { Alert.alert('Name and address required'); return; }
     setSaving(true);
+
+    let imageUrl = modal.image_url || null;
+
+    if (localImageUri) {
+      const ext = localImageUri.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const mimeType = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
+      const fileName = `store-${Date.now()}.${ext}`;
+      const response = await fetch(localImageUri);
+      const blob = await response.blob();
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('store-images')
+        .upload(fileName, blob, { contentType: mimeType, upsert: false });
+      if (uploadError) {
+        setSaving(false);
+        Alert.alert('Upload failed', uploadError.message);
+        return;
+      }
+      const { data: { publicUrl } } = supabase.storage.from('store-images').getPublicUrl(uploadData.path);
+      imageUrl = publicUrl;
+    }
+
     const payload = {
       name: modal.name.trim(),
       address: modal.address.trim(),
@@ -76,12 +125,15 @@ export default function AdminStores() {
       closes_at: modal.closes_at.trim() || '21:00',
       latitude: modal.latitude.trim() || null,
       longitude: modal.longitude.trim() || null,
+      image_url: imageUrl,
+      contact_number: modal.contact_number.trim() || null,
     };
     const { error } = modal.id
       ? await supabase.from('stores').update(payload).eq('id', modal.id)
       : await supabase.from('stores').insert(payload);
     setSaving(false);
     if (error) { Alert.alert('Error', error.message); return; }
+    setLocalImageUri(null);
     setModal(null);
     load();
   };
@@ -116,20 +168,37 @@ export default function AdminStores() {
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-              <Pressable onPress={() => openEdit(item)} hitSlop={8} style={styles.editBtn}>
-                <Feather name="edit-2" size={15} color={colors.muted} />
-              </Pressable>
-            </View>
-            <Text style={styles.line}>{item.address}</Text>
-            <Text style={styles.line}>{item.opens_at} – {item.closes_at}</Text>
-            {(item.latitude || item.longitude) && (
-              <View style={styles.coordRow}>
-                <Feather name="map-pin" size={11} color={colors.brandPrimary} />
-                <Text style={styles.coordText}>{item.latitude}, {item.longitude}</Text>
+              {item.image_url ? (
+                <Image source={item.image_url} style={styles.cardThumb} contentFit="cover" />
+              ) : (
+                <View style={styles.cardThumbPlaceholder}>
+                  <Feather name="home" size={18} color={colors.brandPrimary} />
+                </View>
+              )}
+              <View style={styles.cardBody}>
+                <View style={styles.cardNameRow}>
+                  <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+                  <Pressable onPress={() => openEdit(item)} hitSlop={8} style={styles.editBtn}>
+                    <Feather name="edit-2" size={15} color={colors.muted} />
+                  </Pressable>
+                </View>
+                <Text style={styles.line}>{item.address}</Text>
+                <Text style={styles.line}>{item.opens_at} – {item.closes_at}</Text>
+                {item.contact_number ? (
+                  <View style={styles.coordRow}>
+                    <Feather name="phone" size={11} color={colors.brandPrimary} />
+                    <Text style={styles.coordText}>{item.contact_number}</Text>
+                  </View>
+                ) : null}
+                {(item.latitude || item.longitude) && (
+                  <View style={styles.coordRow}>
+                    <Feather name="map-pin" size={11} color={colors.brandPrimary} />
+                    <Text style={styles.coordText}>{item.latitude}, {item.longitude}</Text>
+                  </View>
+                )}
+                <Text style={styles.meta}>Primary seller: {item.primary_seller?.full_name || 'unassigned'}</Text>
               </View>
-            )}
-            <Text style={styles.meta}>Primary seller: {item.primary_seller?.full_name || 'unassigned'}</Text>
+            </View>
           </View>
         )}
       />
@@ -141,6 +210,44 @@ export default function AdminStores() {
             <View style={styles.sheet}>
               <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalTitle}>{modal?.id ? 'Edit Store' : 'New Store'}</Text>
+
+                {/* ── Image ── */}
+                <Text style={styles.label}>Store Photo</Text>
+                <View style={styles.imageRow}>
+                  <Pressable onPress={pickImage} style={styles.imageBox}>
+                    {(localImageUri || modal?.image_url) ? (
+                      <Image
+                        source={localImageUri || modal?.image_url}
+                        style={styles.imagePreview}
+                        contentFit="cover"
+                      />
+                    ) : (
+                      <View style={styles.imagePlaceholder}>
+                        <Feather name="camera" size={28} color={colors.muted} />
+                        <Text style={styles.imagePlaceholderText}>Tap to add</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                  <View style={styles.imageActions}>
+                    <Pressable onPress={pickImage} style={styles.imageBtn}>
+                      <Feather name="image" size={14} color={colors.brandPrimary} />
+                      <Text style={styles.imageBtnText}>
+                        {(localImageUri || modal?.image_url) ? 'Change Photo' : 'Add Photo'}
+                      </Text>
+                    </Pressable>
+                    {(localImageUri || modal?.image_url) ? (
+                      <Pressable
+                        onPress={() => {
+                          setLocalImageUri(null);
+                          setModal(m => m ? { ...m, image_url: '' } : null);
+                        }}
+                        style={styles.imageRemoveBtn}
+                      >
+                        <Text style={styles.imageRemoveText}>Remove</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                </View>
 
                 <Text style={styles.label}>Store name</Text>
                 <TextInput
@@ -160,6 +267,16 @@ export default function AdminStores() {
                   value={modal?.address}
                   onChangeText={v => setModal(m => m ? { ...m, address: v } : null)}
                   multiline
+                />
+
+                <Text style={styles.label}>Contact Number</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. +91 98765 43210"
+                  placeholderTextColor={colors.muted}
+                  value={modal?.contact_number}
+                  onChangeText={v => setModal(m => m ? { ...m, contact_number: v } : null)}
+                  keyboardType="phone-pad"
                 />
 
                 <Text style={styles.label}>Hours</Text>
@@ -266,14 +383,20 @@ const styles = StyleSheet.create({
   header: { fontFamily: fonts.display, fontSize: 22, color: colors.onSurface },
   addBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.brandPrimary, alignItems: 'center', justifyContent: 'center' },
   empty: { color: colors.muted, textAlign: 'center', marginTop: spacing.xl, fontFamily: fonts.text },
+
   card: { backgroundColor: colors.surfaceSecondary, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  cardThumb: { width: 52, height: 52, borderRadius: radius.sm, flexShrink: 0, backgroundColor: colors.surfaceTertiary },
+  cardThumbPlaceholder: { width: 52, height: 52, borderRadius: radius.sm, flexShrink: 0, backgroundColor: colors.brandPrimary + '14', alignItems: 'center', justifyContent: 'center' },
+  cardBody: { flex: 1 },
+  cardNameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
   name: { fontFamily: fonts.textBold, color: colors.onSurface, fontSize: 15, flex: 1 },
   editBtn: { padding: 4, marginLeft: spacing.sm },
   line: { fontFamily: fonts.text, color: colors.onSurfaceTertiary, fontSize: 13, marginTop: 2 },
   coordRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   coordText: { fontFamily: fonts.text, color: colors.muted, fontSize: 12 },
   meta: { fontFamily: fonts.textMedium, color: colors.muted, fontSize: 12, marginTop: spacing.sm },
+
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.xl, maxHeight: '90%' },
   modalTitle: { fontFamily: fonts.display, fontSize: 20, color: colors.onSurface, marginBottom: spacing.md },
@@ -282,6 +405,19 @@ const styles = StyleSheet.create({
   multiline: { minHeight: 72, textAlignVertical: 'top' },
   row: { flexDirection: 'row', gap: spacing.sm },
   flex1: { flex: 1 },
+
+  // Image picker
+  imageRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.xs },
+  imageBox: { width: 80, height: 80, borderRadius: radius.md, overflow: 'hidden', flexShrink: 0 },
+  imagePreview: { width: 80, height: 80 },
+  imagePlaceholder: { width: 80, height: 80, backgroundColor: colors.surfaceTertiary, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  imagePlaceholderText: { fontFamily: fonts.text, fontSize: 10, color: colors.muted },
+  imageActions: { flex: 1, gap: spacing.sm },
+  imageBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.brandPrimary },
+  imageBtnText: { fontFamily: fonts.textBold, fontSize: 13, color: colors.brandPrimary },
+  imageRemoveBtn: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
+  imageRemoveText: { fontFamily: fonts.textMedium, fontSize: 13, color: colors.error ?? colors.muted },
+
   timeBtn: { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, paddingVertical: spacing.md, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surfaceSecondary },
   timeBtnLabel: { fontFamily: fonts.text, fontSize: 10, color: colors.muted, letterSpacing: 0.5, textTransform: 'uppercase' },
   timeBtnValue: { fontFamily: fonts.textBold, fontSize: 18, color: colors.onSurface },
