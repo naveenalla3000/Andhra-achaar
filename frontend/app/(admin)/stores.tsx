@@ -44,7 +44,7 @@ export default function AdminStores() {
   const [modal, setModal] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
-  const [localImageUri, setLocalImageUri] = useState<string | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
 
   const [timePickerFor, setTimePickerFor] = useState<'opens_at' | 'closes_at' | null>(null);
   const timePickerOriginal = useRef('');
@@ -62,12 +62,12 @@ export default function AdminStores() {
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const openNew = () => {
-    setLocalImageUri(null);
+    setImageUploading(false);
     setModal(blankDraft());
   };
 
   const openEdit = (item: any) => {
-    setLocalImageUri(null);
+    setImageUploading(false);
     setModal({
       id: item.id,
       name: item.name || '',
@@ -82,14 +82,32 @@ export default function AdminStores() {
   };
 
   const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') { Alert.alert('Permission needed', 'Allow photo library access to upload images.'); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.8,
+      quality: 0.85,
     });
-    if (!result.canceled && result.assets[0]) {
-      setLocalImageUri(result.assets[0].uri);
+    if (result.canceled) return;
+    setImageUploading(true);
+    try {
+      const asset = result.assets[0];
+      const response = await fetch(asset.uri);
+      const arrayBuffer = await response.arrayBuffer();
+      const ext = (asset.uri.split('.').pop() || 'jpg').toLowerCase().replace(/\?.*$/, '');
+      const path = `stores/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(path, arrayBuffer, { contentType: asset.mimeType || `image/${ext}`, upsert: false });
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(path);
+      setModal(m => m ? { ...m, image_url: publicUrl } : null);
+    } catch (err: any) {
+      Alert.alert('Upload failed', err.message);
+    } finally {
+      setImageUploading(false);
     }
   };
 
@@ -97,27 +115,6 @@ export default function AdminStores() {
     if (!modal) return;
     if (!modal.name.trim() || !modal.address.trim()) { Alert.alert('Name and address required'); return; }
     setSaving(true);
-
-    let imageUrl = modal.image_url || null;
-
-    if (localImageUri) {
-      const ext = localImageUri.split('.').pop()?.toLowerCase() ?? 'jpg';
-      const mimeType = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
-      const fileName = `store-${Date.now()}.${ext}`;
-      const response = await fetch(localImageUri);
-      const blob = await response.blob();
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('store-images')
-        .upload(fileName, blob, { contentType: mimeType, upsert: false });
-      if (uploadError) {
-        setSaving(false);
-        Alert.alert('Upload failed', uploadError.message);
-        return;
-      }
-      const { data: { publicUrl } } = supabase.storage.from('store-images').getPublicUrl(uploadData.path);
-      imageUrl = publicUrl;
-    }
-
     const payload = {
       name: modal.name.trim(),
       address: modal.address.trim(),
@@ -125,7 +122,7 @@ export default function AdminStores() {
       closes_at: modal.closes_at.trim() || '21:00',
       latitude: modal.latitude.trim() || null,
       longitude: modal.longitude.trim() || null,
-      image_url: imageUrl,
+      image_url: modal.image_url.trim() || null,
       contact_number: modal.contact_number.trim() || null,
     };
     const { error } = modal.id
@@ -133,7 +130,6 @@ export default function AdminStores() {
       : await supabase.from('stores').insert(payload);
     setSaving(false);
     if (error) { Alert.alert('Error', error.message); return; }
-    setLocalImageUri(null);
     setModal(null);
     load();
   };
@@ -211,43 +207,27 @@ export default function AdminStores() {
               <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalTitle}>{modal?.id ? 'Edit Store' : 'New Store'}</Text>
 
-                {/* ── Image ── */}
+                {/* ── Photo ── */}
                 <Text style={styles.label}>Store Photo</Text>
-                <View style={styles.imageRow}>
-                  <Pressable onPress={pickImage} style={styles.imageBox}>
-                    {(localImageUri || modal?.image_url) ? (
-                      <Image
-                        source={localImageUri || modal?.image_url}
-                        style={styles.imagePreview}
-                        contentFit="cover"
-                      />
-                    ) : (
-                      <View style={styles.imagePlaceholder}>
-                        <Feather name="camera" size={28} color={colors.muted} />
-                        <Text style={styles.imagePlaceholderText}>Tap to add</Text>
+                <Pressable onPress={pickImage} disabled={imageUploading} style={styles.imageBtn}>
+                  {imageUploading ? (
+                    <View style={styles.imageBtnEmpty}>
+                      <ActivityIndicator color={colors.brandPrimary} />
+                    </View>
+                  ) : modal?.image_url ? (
+                    <View style={styles.imageBtnPreview}>
+                      <Image source={modal.image_url} style={StyleSheet.absoluteFill} contentFit="cover" />
+                      <View style={styles.imageBtnOverlay}>
+                        <Text style={styles.imageBtnChange}>Tap to change</Text>
                       </View>
-                    )}
-                  </Pressable>
-                  <View style={styles.imageActions}>
-                    <Pressable onPress={pickImage} style={styles.imageBtn}>
-                      <Feather name="image" size={14} color={colors.brandPrimary} />
-                      <Text style={styles.imageBtnText}>
-                        {(localImageUri || modal?.image_url) ? 'Change Photo' : 'Add Photo'}
-                      </Text>
-                    </Pressable>
-                    {(localImageUri || modal?.image_url) ? (
-                      <Pressable
-                        onPress={() => {
-                          setLocalImageUri(null);
-                          setModal(m => m ? { ...m, image_url: '' } : null);
-                        }}
-                        style={styles.imageRemoveBtn}
-                      >
-                        <Text style={styles.imageRemoveText}>Remove</Text>
-                      </Pressable>
-                    ) : null}
-                  </View>
-                </View>
+                    </View>
+                  ) : (
+                    <View style={styles.imageBtnEmpty}>
+                      <Feather name="camera" size={20} color={colors.muted} />
+                      <Text style={styles.imageBtnEmptyText}>Upload image</Text>
+                    </View>
+                  )}
+                </Pressable>
 
                 <Text style={styles.label}>Store name</Text>
                 <TextInput
@@ -324,7 +304,7 @@ export default function AdminStores() {
                   <Pressable onPress={() => setModal(null)} style={[styles.mBtn, styles.mBtnGhost]}>
                     <Text style={styles.mBtnGhostText}>Cancel</Text>
                   </Pressable>
-                  <Pressable testID="save-store" onPress={save} disabled={saving} style={[styles.mBtn, { backgroundColor: colors.brandPrimary }]}>
+                  <Pressable testID="save-store" onPress={save} disabled={saving || imageUploading} style={[styles.mBtn, { backgroundColor: colors.brandPrimary }]}>
                     {saving ? <ActivityIndicator color={colors.onBrandPrimary} /> : <Text style={styles.mBtnText}>Save</Text>}
                   </Pressable>
                 </View>
@@ -361,7 +341,7 @@ export default function AdminStores() {
         </View>
       </Modal>
 
-      {/* ── Map picker (native: full map; web: no-op stub) ── */}
+      {/* ── Map picker ── */}
       <StoreMapPicker
         visible={mapVisible}
         latitude={modal?.latitude ?? ''}
@@ -406,17 +386,12 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: spacing.sm },
   flex1: { flex: 1 },
 
-  // Image picker
-  imageRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.xs },
-  imageBox: { width: 80, height: 80, borderRadius: radius.md, overflow: 'hidden', flexShrink: 0 },
-  imagePreview: { width: 80, height: 80 },
-  imagePlaceholder: { width: 80, height: 80, backgroundColor: colors.surfaceTertiary, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  imagePlaceholderText: { fontFamily: fonts.text, fontSize: 10, color: colors.muted },
-  imageActions: { flex: 1, gap: spacing.sm },
-  imageBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.brandPrimary },
-  imageBtnText: { fontFamily: fonts.textBold, fontSize: 13, color: colors.brandPrimary },
-  imageRemoveBtn: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
-  imageRemoveText: { fontFamily: fonts.textMedium, fontSize: 13, color: colors.error ?? colors.muted },
+  imageBtn: { aspectRatio: 1, maxHeight: 120, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, overflow: 'hidden', marginTop: spacing.xs },
+  imageBtnEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.xs, backgroundColor: colors.surfaceSecondary },
+  imageBtnEmptyText: { fontFamily: fonts.text, fontSize: 13, color: colors.muted },
+  imageBtnPreview: { flex: 1 },
+  imageBtnOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', paddingVertical: spacing.xs },
+  imageBtnChange: { fontFamily: fonts.text, fontSize: 12, color: '#fff' },
 
   timeBtn: { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, paddingVertical: spacing.md, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surfaceSecondary },
   timeBtnLabel: { fontFamily: fonts.text, fontSize: 10, color: colors.muted, letterSpacing: 0.5, textTransform: 'uppercase' },
