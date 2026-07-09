@@ -176,22 +176,22 @@ export default function Orders() {
                 onPress={() => router.push(`/order-detail/${group.checkout_id}`)}
               >
                 <View style={styles.rowBetween}>
-                  <Text style={styles.orderRef}>#{group.order_ref}</Text>
+                  <View>
+                    <Text style={styles.orderRef}>#{group.order_ref}</Text>
+                    <Text style={styles.date}>
+                      {new Date(group.created_at).toLocaleString('en-IN', {
+                        day: 'numeric', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit',
+                      })}
+                    </Text>
+                  </View>
                   <View style={[styles.badge, { backgroundColor: s.bg }]}>
                     <Text style={[styles.badgeText, { color: s.fg }]}>{s.label}</Text>
                   </View>
                 </View>
 
                 <View style={styles.contentRow}>
-                  <View>
-                    <PhotoCollage images={group.images} lineItemCount={group.lineItemCount} />
-                    <Text style={styles.orderedAt}>
-                      Ordered: {new Date(group.created_at).toLocaleString('en-IN', {
-                        day: 'numeric', month: 'short',
-                        hour: '2-digit', minute: '2-digit',
-                      })}
-                    </Text>
-                  </View>
+                  <PhotoCollage images={group.images} lineItemCount={group.lineItemCount} />
                   <View style={styles.storeInfo}>
                     <View>
                       <Text style={styles.storeName} numberOfLines={2}>
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
 
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   orderRef: { fontFamily: fonts.textBold, fontSize: 13, color: colors.onSurface },
-  orderedAt: { fontFamily: fonts.text, fontSize: 10, color: colors.muted, marginTop: 5, width: C },
+  date: { fontFamily: fonts.text, fontSize: 11, color: colors.muted, marginTop: 1 },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.pill },
   badgeText: { fontFamily: fonts.textBold, fontSize: 10, letterSpacing: 0.4 },
 
