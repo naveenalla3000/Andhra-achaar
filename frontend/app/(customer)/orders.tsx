@@ -176,15 +176,12 @@ export default function Orders() {
                 onPress={() => router.push(`/order-detail/${group.checkout_id}`)}
               >
                 <View style={styles.rowBetween}>
-                  <View>
-                    <Text style={styles.orderRef}>#{group.order_ref}</Text>
-                    <Text style={styles.date}>
-                      {new Date(group.created_at).toLocaleString('en-IN', {
-                        day: 'numeric', month: 'short', year: 'numeric',
-                        hour: '2-digit', minute: '2-digit',
-                      })}
-                    </Text>
-                  </View>
+                  <Text style={styles.date}>
+                    {new Date(group.created_at).toLocaleString('en-IN', {
+                      day: 'numeric', month: 'short', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit',
+                    })}
+                  </Text>
                   <View style={[styles.badge, { backgroundColor: s.bg }]}>
                     <Text style={[styles.badgeText, { color: s.fg }]}>{s.label}</Text>
                   </View>
