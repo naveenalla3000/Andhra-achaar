@@ -119,36 +119,36 @@ export default function OrderDetail() {
                     <View style={styles.storeCardBody}>
                       <View style={styles.storeNameRow}>
                         <Text style={styles.storeName} numberOfLines={1}>{order.store_name ?? '—'}</Text>
-                        <View style={styles.iconBtns}>
-                          {order.store_contact_number ? (
-                            <Pressable
-                              style={styles.iconBtn}
-                              onPress={() => Linking.openURL(`tel:${order.store_contact_number}`)}
-                              hitSlop={6}
-                            >
-                              <Feather name="phone" size={14} color={colors.brandPrimary} />
-                            </Pressable>
-                          ) : null}
-                          {hasLocation ? (
-                            <Pressable
-                              style={styles.iconBtn}
-                              onPress={() =>
-                                Linking.openURL(
-                                  `https://www.google.com/maps/dir/?api=1&destination=${order.store_latitude},${order.store_longitude}`
-                                )
-                              }
-                              hitSlop={6}
-                            >
-                              <Feather name="navigation" size={14} color={colors.brandPrimary} />
-                            </Pressable>
-                          ) : null}
+                        <View style={[styles.badge, { backgroundColor: s.bg }]}>
+                          <Text style={[styles.badgeText, { color: s.fg }]}>{s.label}</Text>
                         </View>
                       </View>
                       {order.store_address ? (
                         <Text style={styles.storeAddress} numberOfLines={2}>{order.store_address}</Text>
                       ) : null}
-                      <View style={[styles.badge, { alignSelf: 'flex-start', backgroundColor: s.bg }]}>
-                        <Text style={[styles.badgeText, { color: s.fg }]}>{s.label}</Text>
+                      <View style={styles.iconBtns}>
+                        {order.store_contact_number ? (
+                          <Pressable
+                            style={styles.iconBtn}
+                            onPress={() => Linking.openURL(`tel:${order.store_contact_number}`)}
+                            hitSlop={6}
+                          >
+                            <Feather name="phone" size={14} color={colors.brandPrimary} />
+                          </Pressable>
+                        ) : null}
+                        {hasLocation ? (
+                          <Pressable
+                            style={styles.iconBtn}
+                            onPress={() =>
+                              Linking.openURL(
+                                `https://www.google.com/maps/dir/?api=1&destination=${order.store_latitude},${order.store_longitude}`
+                              )
+                            }
+                            hitSlop={6}
+                          >
+                            <Feather name="navigation" size={14} color={colors.brandPrimary} />
+                          </Pressable>
+                        ) : null}
                       </View>
                     </View>
                   </View>
