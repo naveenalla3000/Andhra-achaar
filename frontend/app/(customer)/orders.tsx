@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
 
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   orderRef: { fontFamily: fonts.textBold, fontSize: 13, color: colors.onSurface },
-  orderedAt: { fontFamily: fonts.text, fontSize: 10, color: colors.muted, marginTop: 5 },
+  orderedAt: { fontFamily: fonts.text, fontSize: 10, color: colors.muted, marginTop: 5, width: C },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.pill },
   badgeText: { fontFamily: fonts.textBold, fontSize: 10, letterSpacing: 0.4 },
 
