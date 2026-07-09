@@ -159,22 +159,6 @@ export default function OrderDetail() {
             </View>
           </View>
 
-          {/* Action buttons */}
-          <View style={styles.actions}>
-            <Pressable
-              style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.7 }]}
-              onPress={() => router.replace('/(customer)/home')}
-            >
-              <Text style={styles.actionText}>Reorder</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.7 }]}
-              onPress={() => router.push('/(customer)/home')}
-            >
-              <Text style={styles.actionText}>Get help</Text>
-            </Pressable>
-          </View>
-
           <View style={{ height: spacing.xxxl }} />
         </ScrollView>
       )}

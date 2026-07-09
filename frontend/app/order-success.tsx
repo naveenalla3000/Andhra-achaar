@@ -137,7 +137,7 @@ export default function OrderSuccess() {
 
           <Pressable
             style={styles.btn}
-            onPress={() => router.replace('/(customer)/account')}
+            onPress={() => router.replace('/(customer)/orders')}
           >
             <Text style={styles.btnText}>View My Orders</Text>
           </Pressable>
