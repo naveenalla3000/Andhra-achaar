@@ -203,8 +203,13 @@ export default function OrderDetail() {
 
                     {showPickup && (
                       <View style={styles.pickupBox}>
-                        <Text style={styles.pickupLabel}>Pickup code</Text>
+                        <View style={styles.pickupHeader}>
+                          <Feather name="lock" size={13} color={colors.brandPrimary} />
+                          <Text style={styles.pickupLabel}>PICKUP CODE</Text>
+                        </View>
+                        <View style={styles.pickupDivider} />
                         <Text style={styles.pickupCode}>{pickupCode(order.id)}</Text>
+                        <Text style={styles.pickupHint}>Show this code to the seller</Text>
                       </View>
                     )}
 
@@ -343,13 +348,20 @@ const styles = StyleSheet.create({
   readyDate: { fontFamily: fonts.textMedium, fontSize: 12, color: colors.success },
 
   pickupBox: {
-    backgroundColor: colors.onSurface,
-    borderRadius: radius.sm,
-    padding: spacing.md,
-    gap: 4,
+    backgroundColor: colors.brandPrimary + '0D',
+    borderWidth: 1.5,
+    borderColor: colors.brandPrimary + '50',
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
   },
-  pickupLabel: { fontFamily: fonts.text, fontSize: 11, color: colors.borderStrong },
-  pickupCode: { fontFamily: fonts.display, fontSize: 26, color: colors.onBrandPrimary, letterSpacing: 6 },
+  pickupHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  pickupLabel: { fontFamily: fonts.textBold, fontSize: 11, color: colors.brandPrimary, letterSpacing: 1.5 },
+  pickupDivider: { width: '100%', height: 1, backgroundColor: colors.brandPrimary + '25', marginVertical: spacing.xs },
+  pickupCode: { fontFamily: fonts.display, fontSize: 32, color: colors.brandPrimary, letterSpacing: 10 },
+  pickupHint: { fontFamily: fonts.text, fontSize: 11, color: colors.muted, marginTop: 2 },
 
   subtotalRow: {
     flexDirection: 'row',
