@@ -35,29 +35,29 @@ export default function AdminUsers() {
     setDraftStoreId(item.store_id ?? null);
   };
 
-  // Stores with no primary seller yet, plus whichever store this user already leads (if any).
-  const availableStores = stores.filter(s => !s.primary_seller_id || s.primary_seller_id === selectedUser?.id);
+  // Sub-sellers can go to any store. Primary sellers only to stores without one (or their current).
+  const availableStores = draftRole === 'sub_seller'
+    ? stores
+    : stores.filter(s => !s.primary_seller_id || s.primary_seller_id === selectedUser?.id);
 
   const save = async () => {
     if (!selectedUser) return;
     const needsStore = STORE_ROLES.includes(draftRole);
     const finalStoreId = needsStore ? draftStoreId : null;
 
-    if (selectedUser.role === 'primary_seller' && selectedUser.store_id && selectedUser.store_id !== finalStoreId) {
-      const { error } = await supabase.from('stores').update({ primary_seller_id: null }).eq('id', selectedUser.store_id).eq('primary_seller_id', selectedUser.id);
-      if (error) { Alert.alert('Error', error.message); return; }
+    if (needsStore && !finalStoreId) {
+      Alert.alert('Store required', 'Please select a store for this role.');
+      return;
     }
 
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({ role: draftRole, store_id: finalStoreId })
-      .eq('supabase_id', selectedUser.supabase_id);
+    const params: Record<string, unknown> = {
+      p_user_id: selectedUser.id,
+      p_new_role: draftRole,
+    };
+    if (finalStoreId) params.p_new_store_id = finalStoreId;
+
+    const { error } = await supabase.rpc('admin_change_role', params);
     if (error) { Alert.alert('Error', error.message); return; }
-
-    if (draftRole === 'primary_seller' && finalStoreId) {
-      const { error: assignErr } = await supabase.from('stores').update({ primary_seller_id: selectedUser.id }).eq('id', finalStoreId);
-      if (assignErr) { Alert.alert('Error', assignErr.message); return; }
-    }
 
     setSelectedUser(null); load();
   };

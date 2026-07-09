@@ -193,8 +193,9 @@ export default function OrderDetail() {
                       <View style={styles.readyRow}>
                         <Feather name="clock" size={12} color={colors.success} />
                         <Text style={styles.readyDate}>
-                          Ready on {new Date(order.ready_date).toLocaleDateString('en-IN', {
+                          Ready: {new Date(order.ready_date).toLocaleString('en-IN', {
                             day: 'numeric', month: 'short', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit',
                           })}
                         </Text>
                       </View>
