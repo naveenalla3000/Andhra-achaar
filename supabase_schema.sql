@@ -70,6 +70,7 @@ SET default_table_access_method = heap;
 CREATE TABLE public.orders (
     id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     customer_id uuid NOT NULL,
+    checkout_id uuid NOT NULL DEFAULT gen_random_uuid(),
     store_id uuid NOT NULL,
     status public.order_status DEFAULT 'placed'::public.order_status NOT NULL,
     total_inr numeric(10,2) DEFAULT 0 NOT NULL,
@@ -93,9 +94,10 @@ CREATE FUNCTION public.checkout() RETURNS SETOF public.orders
     SET search_path TO 'public'
     AS $$
 declare
-  v_customer uuid := public.current_profile_id();
-  v_store    uuid;
-  v_order    public.orders;
+  v_customer    uuid := public.current_profile_id();
+  v_checkout_id uuid := gen_random_uuid();
+  v_store       uuid;
+  v_order       public.orders;
 begin
   if v_customer is null then
     raise exception 'No profile for current user';
@@ -115,11 +117,13 @@ begin
   loop
     insert into public.orders (
       customer_id,
+      checkout_id,
       store_id, store_name, store_address, store_image_url, store_latitude, store_longitude,
       status, total_inr
     )
     select
       v_customer,
+      v_checkout_id,
       v_store, s.name, s.address, s.image_url, s.latitude, s.longitude,
       'placed',
       sum((vp.selling_price_inr + vp.packaging_cost) * c.quantity)
@@ -128,6 +132,7 @@ begin
     join public.variant_packagings vp on vp.id = c.variant_packaging_id
     join public.stores             s  on s.id  = p.store_id
     where c.customer_id = v_customer and p.store_id = v_store
+    group by s.name, s.address, s.image_url, s.latitude, s.longitude
     returning * into v_order;
 
     insert into public.order_items (

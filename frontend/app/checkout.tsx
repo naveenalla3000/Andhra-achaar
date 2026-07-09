@@ -82,11 +82,7 @@ export default function Checkout() {
     try {
       const { error } = await supabase.rpc('checkout');
       if (error) throw error;
-      Alert.alert(
-        'Order placed!',
-        'Your order is confirmed. Please pay at the store when you pick up.',
-        [{ text: 'View Orders', onPress: () => router.replace('/(customer)/account') }],
-      );
+      router.replace('/order-success');
     } catch (e: any) {
       Alert.alert('Order failed', e.message || 'Please try again');
     } finally {
