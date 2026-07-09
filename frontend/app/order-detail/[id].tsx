@@ -14,13 +14,6 @@ function pickupCode(orderId: string): string {
   return String((n % 900000) + 100000).split('').join(' ');
 }
 
-function orderRef(checkoutId: string, createdAt: string): string {
-  const d = new Date(createdAt);
-  const date = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-  const suffix = checkoutId.replace(/-/g, '').slice(0, 4).toUpperCase();
-  return `AA-${date}-${suffix}`;
-}
-
 type OrderItem = {
   id: string;
   pickle_name: string;
@@ -31,6 +24,7 @@ type OrderItem = {
 
 type StoreOrder = {
   id: string;
+  order_ref: string;
   status: string;
   total_inr: string;
   ready_date: string | null;
@@ -51,7 +45,7 @@ export default function OrderDetail() {
     setLoading(true);
     const { data } = await supabase
       .from('orders')
-      .select('id, status, total_inr, ready_date, created_at, store_name, order_items(id, pickle_name, variant_label, quantity, line_total_inr)')
+      .select('id, order_ref, status, total_inr, ready_date, created_at, store_name, order_items(id, pickle_name, variant_label, quantity, line_total_inr)')
       .eq('checkout_id', id)
       .order('created_at', { ascending: true });
     setOrders(data || []);
@@ -75,7 +69,7 @@ export default function OrderDetail() {
           {firstOrder ? (
             <>
               <Text style={styles.orderRef}>
-                Order #{orderRef(id, firstOrder.created_at)}
+                Order #{firstOrder.order_ref}
               </Text>
               <Text style={styles.orderDate}>
                 {new Date(firstOrder.created_at).toLocaleString('en-IN', {

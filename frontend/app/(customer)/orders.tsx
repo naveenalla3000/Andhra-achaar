@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator } from 'react-native';
+import { useCallback, useState, useMemo } from 'react';
+import { View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator, TextInput } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -20,6 +20,7 @@ type OrderItem = { quantity: number; pickle_image_url: string | null };
 type OrderRow = {
   id: string;
   checkout_id: string;
+  order_ref: string;
   status: string;
   total_inr: string;
   created_at: string;
@@ -29,6 +30,7 @@ type OrderRow = {
 
 type CheckoutGroup = {
   checkout_id: string;
+  order_ref: string;
   created_at: string;
   total: number;
   lineItemCount: number;
@@ -102,13 +104,14 @@ export default function Orders() {
   const router = useRouter();
   const [checkouts, setCheckouts] = useState<CheckoutGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
 
   const load = useCallback(async () => {
     if (!profile) return;
     setLoading(true);
     const { data } = await supabase
       .from('orders')
-      .select('id, checkout_id, status, total_inr, created_at, store_name, order_items(quantity, pickle_image_url)')
+      .select('id, checkout_id, order_ref, status, total_inr, created_at, store_name, order_items(quantity, pickle_image_url)')
       .eq('customer_id', profile.id)
       .order('created_at', { ascending: false });
 
@@ -119,6 +122,7 @@ export default function Orders() {
       if (!map.has(row.checkout_id)) {
         map.set(row.checkout_id, {
           checkout_id: row.checkout_id,
+          order_ref: row.order_ref,
           created_at: row.created_at,
           total: 0,
           lineItemCount: 0,
@@ -148,18 +152,42 @@ export default function Orders() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toUpperCase();
+    if (!q) return checkouts;
+    return checkouts.filter(g => g.order_ref.toUpperCase().includes(q));
+  }, [checkouts, query]);
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <Text style={styles.header}>Your Orders</Text>
+
+      <View style={styles.searchWrap}>
+        <Feather name="search" size={15} color={colors.muted} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by order ID…"
+          placeholderTextColor={colors.muted}
+          value={query}
+          onChangeText={setQuery}
+          autoCapitalize="characters"
+          returnKeyType="search"
+          clearButtonMode="while-editing"
+        />
+      </View>
 
       {loading ? (
         <ActivityIndicator color={colors.brandPrimary} style={{ marginTop: spacing.xl }} />
       ) : (
         <FlatList
-          data={checkouts}
+          data={filtered}
           keyExtractor={(g) => g.checkout_id}
           contentContainerStyle={styles.list}
-          ListEmptyComponent={<Text style={styles.empty}>No orders yet.</Text>}
+          ListEmptyComponent={
+            <Text style={styles.empty}>
+              {query ? 'No orders match that ID.' : 'No orders yet.'}
+            </Text>
+          }
           renderItem={({ item: group }) => {
             const status = deriveStatus(group.orders);
             const s = status === 'mixed'
@@ -173,12 +201,15 @@ export default function Orders() {
                 onPress={() => router.push(`/order-detail/${group.checkout_id}`)}
               >
                 <View style={styles.rowBetween}>
-                  <Text style={styles.date}>
-                    {new Date(group.created_at).toLocaleString('en-IN', {
-                      day: 'numeric', month: 'short', year: 'numeric',
-                      hour: '2-digit', minute: '2-digit',
-                    })}
-                  </Text>
+                  <View>
+                    <Text style={styles.orderRef}>#{group.order_ref}</Text>
+                    <Text style={styles.date}>
+                      {new Date(group.created_at).toLocaleString('en-IN', {
+                        day: 'numeric', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit',
+                      })}
+                    </Text>
+                  </View>
                   <View style={[styles.badge, { backgroundColor: s.bg }]}>
                     <Text style={[styles.badgeText, { color: s.fg }]}>{s.label}</Text>
                   </View>
@@ -215,6 +246,28 @@ export default function Orders() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.surface },
   header: { fontFamily: fonts.display, fontSize: 22, color: colors.onSurface, padding: spacing.xl, paddingBottom: spacing.md },
+
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: spacing.xl,
+    marginBottom: spacing.md,
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm,
+    height: 40,
+  },
+  searchIcon: { marginRight: spacing.xs },
+  searchInput: {
+    flex: 1,
+    fontFamily: fonts.text,
+    fontSize: 13,
+    color: colors.onSurface,
+    height: '100%',
+  },
+
   list: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xxxl, gap: spacing.sm },
   empty: { color: colors.muted, fontFamily: fonts.text, textAlign: 'center', marginTop: spacing.xl },
 
@@ -229,7 +282,8 @@ const styles = StyleSheet.create({
   cardPressed: { opacity: 0.72 },
 
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  date: { fontFamily: fonts.text, fontSize: 12, color: colors.muted },
+  orderRef: { fontFamily: fonts.textBold, fontSize: 13, color: colors.onSurface },
+  date: { fontFamily: fonts.text, fontSize: 11, color: colors.muted, marginTop: 1 },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.pill },
   badgeText: { fontFamily: fonts.textBold, fontSize: 10, letterSpacing: 0.4 },
 
