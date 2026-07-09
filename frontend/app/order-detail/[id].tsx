@@ -119,36 +119,36 @@ export default function OrderDetail() {
                     <View style={styles.storeCardBody}>
                       <View style={styles.storeNameRow}>
                         <Text style={styles.storeName} numberOfLines={1}>{order.store_name ?? '—'}</Text>
-                        <View style={[styles.badge, { backgroundColor: s.bg }]}>
-                          <Text style={[styles.badgeText, { color: s.fg }]}>{s.label}</Text>
+                        <View style={styles.iconBtns}>
+                          {order.store_contact_number ? (
+                            <Pressable
+                              style={styles.iconBtn}
+                              onPress={() => Linking.openURL(`tel:${order.store_contact_number}`)}
+                              hitSlop={6}
+                            >
+                              <Feather name="phone" size={14} color={colors.brandPrimary} />
+                            </Pressable>
+                          ) : null}
+                          {hasLocation ? (
+                            <Pressable
+                              style={styles.iconBtn}
+                              onPress={() =>
+                                Linking.openURL(
+                                  `https://www.google.com/maps/dir/?api=1&destination=${order.store_latitude},${order.store_longitude}`
+                                )
+                              }
+                              hitSlop={6}
+                            >
+                              <Feather name="navigation" size={14} color={colors.brandPrimary} />
+                            </Pressable>
+                          ) : null}
                         </View>
                       </View>
                       {order.store_address ? (
                         <Text style={styles.storeAddress} numberOfLines={2}>{order.store_address}</Text>
                       ) : null}
-                      <View style={styles.storeActions}>
-                        {order.store_contact_number ? (
-                          <Pressable
-                            style={styles.actionBtn}
-                            onPress={() => Linking.openURL(`tel:${order.store_contact_number}`)}
-                          >
-                            <Feather name="phone" size={13} color={colors.brandPrimary} />
-                            <Text style={styles.actionText}>Call</Text>
-                          </Pressable>
-                        ) : null}
-                        {hasLocation ? (
-                          <Pressable
-                            style={styles.actionBtn}
-                            onPress={() =>
-                              Linking.openURL(
-                                `https://www.google.com/maps/dir/?api=1&destination=${order.store_latitude},${order.store_longitude}`
-                              )
-                            }
-                          >
-                            <Feather name="navigation" size={13} color={colors.brandPrimary} />
-                            <Text style={styles.actionText}>Directions</Text>
-                          </Pressable>
-                        ) : null}
+                      <View style={[styles.badge, { alignSelf: 'flex-start', backgroundColor: s.bg }]}>
+                        <Text style={[styles.badgeText, { color: s.fg }]}>{s.label}</Text>
                       </View>
                     </View>
                   </View>
@@ -259,15 +259,14 @@ const styles = StyleSheet.create({
   badgeText: { fontFamily: fonts.textBold, fontSize: 10, letterSpacing: 0.5 },
   storeAddress: { fontFamily: fonts.text, fontSize: 12, color: colors.muted, lineHeight: 17 },
 
-  storeActions: { flexDirection: 'row', gap: spacing.sm, marginTop: 2 },
-  actionBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingVertical: 5, paddingHorizontal: spacing.sm,
-    borderRadius: radius.sm,
+  iconBtns: { flexDirection: 'row', gap: spacing.xs, flexShrink: 0 },
+  iconBtn: {
+    width: 30, height: 30,
+    borderRadius: 15,
     borderWidth: 1, borderColor: colors.border,
     backgroundColor: colors.surface,
+    alignItems: 'center', justifyContent: 'center',
   },
-  actionText: { fontFamily: fonts.textMedium, fontSize: 12, color: colors.brandPrimary },
 
   itemsBlock: { gap: spacing.xs },
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.sm },
