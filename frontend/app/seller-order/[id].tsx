@@ -339,9 +339,17 @@ export default function SellerOrderDetail() {
         {/* ── Ready date/time ── */}
         {order.ready_date && (
           <View style={styles.card}>
-            <View style={styles.sectionHeader}>
-              <Feather name="clock" size={14} color={colors.success} />
-              <Text style={[styles.sectionTitle, { color: colors.success }]}>Pickup Scheduled</Text>
+            <View style={styles.sectionHeaderRow}>
+              <View style={styles.sectionHeader}>
+                <Feather name="clock" size={14} color={colors.success} />
+                <Text style={[styles.sectionTitle, { color: colors.success }]}>Pickup Scheduled</Text>
+              </View>
+              {showAdvance && order.status === 'ready_date_set' && (
+                <Pressable onPress={handleChangeDatePress} style={styles.changeDateBtn}>
+                  <Feather name="edit-2" size={12} color={colors.brandPrimary} />
+                  <Text style={styles.changeDateText}>Change</Text>
+                </Pressable>
+              )}
             </View>
             <Text style={styles.readyDateTime}>{fmtDT(order.ready_date)}</Text>
           </View>
@@ -355,14 +363,6 @@ export default function SellerOrderDetail() {
             {showAdvance && (
               <Pressable onPress={handleAdvancePress} style={styles.advanceBtn}>
                 <Text style={styles.advanceBtnText}>{advanceLabel}</Text>
-              </Pressable>
-            )}
-
-            {/* Change ready date (while still in ready_date_set) */}
-            {showAdvance && order.status === 'ready_date_set' && (
-              <Pressable onPress={handleChangeDatePress} style={styles.changeDateRow}>
-                <Feather name="edit-2" size={13} color={colors.brandPrimary} />
-                <Text style={styles.changeDateText}>Change Date &amp; Time</Text>
               </Pressable>
             )}
 
@@ -588,12 +588,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md, alignItems: 'center',
   },
   advanceBtnText: { color: colors.onBrandPrimary, fontFamily: fonts.textBold, fontSize: 14 },
-  changeDateRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: spacing.xs, paddingVertical: spacing.sm,
-    borderTopWidth: 1, borderTopColor: colors.border,
+  sectionHeaderRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
-  changeDateText: { fontFamily: fonts.textMedium, fontSize: 13, color: colors.brandPrimary },
+  changeDateBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  changeDateText: { fontFamily: fonts.textMedium, fontSize: 12, color: colors.brandPrimary },
 
   assignRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
